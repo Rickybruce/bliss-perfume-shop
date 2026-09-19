@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "node --watch perfume-shop/server.js",
-  "start": "node perfume-shop/server.js",
+  "dev": "node server.js",
+  "start": "node server.js",
   "test": "jest"
 },
   "keywords": [],
