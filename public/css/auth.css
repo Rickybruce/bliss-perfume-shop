@@ -1,0 +1,198 @@
+/* Sign-up page: plain dark, system fonts (fast on mobile data) */
+
+:root {
+  color-scheme: dark;
+  --bg: #121212;
+  --field: #1a1a1a;
+  --border: #666;
+  --text: #ececec;
+  --muted: #a0a0a0;
+  --error: #ff8a80;
+  --radius: 6px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 32px 24px;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.auth {
+  width: 100%;
+  max-width: 380px;
+}
+
+.brand {
+  margin: 0 0 40px;
+  color: var(--muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.lede {
+  margin: 0 0 32px;
+  color: var(--muted);
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  background: var(--field);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 1rem; /* 16px stops iOS zooming into the field */
+}
+
+input::placeholder {
+  color: #777;
+}
+
+input:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-color: var(--text);
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+/* Keep browser autofill from painting fields light */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--field) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+
+.hint,
+.error {
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+.error:empty {
+  display: none;
+}
+
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-right: 68px;
+}
+
+.toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  height: 40px;
+  padding: 0 12px;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--text);
+}
+
+.submit {
+  width: 100%;
+  height: 48px;
+  margin-top: 8px;
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.status {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status.is-error {
+  color: var(--error);
+}
+
+.switch {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.switch a {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  input,
+  .toggle {
+    transition: border-color 0.15s, color 0.15s;
+  }
+}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Create account</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <main class="auth">
+    <!-- TODO: replace with the shop's real name -->
+    <p class="brand">Shop name</p>
+
+    <h1>Create your account</h1>
+    <p class="lede">Sign up to place and track orders.</p>
+
+    <form id="signup-form" novalidate>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text"
+               autocomplete="username" autocapitalize="none" spellcheck="false"
+               aria-describedby="username-error">
+        <p class="error" id="username-error"></p>
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email"
+               autocomplete="email" autocapitalize="none" spellcheck="false"
+               aria-describedby="email-error">
+        <p class="error" id="email-error"></p>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" inputmode="tel"
+               autocomplete="tel" placeholder="024 123 4567"
+               aria-describedby="phone-hint phone-error">
+        <p class="hint" id="phone-hint">Use your MoMo number if you can. We'll text a code to verify it.</p>
+        <p class="error" id="phone-error"></p>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <!-- maxlength 72: bcrypt ignores anything past 72 bytes -->
+          <input id="password" name="password" type="password" maxlength="72"
+                 autocomplete="new-password"
+                 aria-describedby="password-hint password-error">
+          <button type="button" class="toggle" id="toggle-password" aria-label="Show password">Show</button>
+        </div>
+        <p class="hint" id="password-hint">At least 8 characters.</p>
+        <p class="error" id="password-error"></p>
+      </div>
+
+      <button type="submit" class="submit" id="submit">Create account</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+
+    <!-- TODO: login.html doesn't exist yet -->
+    <p class="switch">Already have an account? <a href="login.html">Log in</a></p>
+  </main>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>
