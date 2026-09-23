@@ -1,9 +1,7 @@
 (() => {
   'use strict';
 
-  // Set this to the Express route once it exists, e.g. '/api/auth/register'.
-  // While it's empty, submit just simulates success so you can test the form.
-  const API_URL = '';
+  const API_URL = '/api/auth/register';
 
   const form = document.getElementById('signup-form');
   const submitBtn = document.getElementById('submit');
@@ -72,10 +70,6 @@
   }
 
   async function register(payload) {
-    if (!API_URL) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return { ok: true };
-    }
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,7 +77,7 @@
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, message: data.message };
+    return { ok: res.ok, data };
   }
 
   form.addEventListener('submit', async (event) => {
@@ -109,9 +103,25 @@
     try {
       const result = await register(payload);
       if (result.ok) {
-        setStatus('Details look good. Phone verification comes next.');
+        sessionStorage.setItem('pendingUserId', result.data.userId);
+        sessionStorage.setItem('pendingPhone', result.data.phone);
+        setStatus('Account created. Redirecting to verify your phone...');
+        window.location.href = 'verify-phone.html';
+        return;
+      }
+
+      // Field-specific errors from the server (e.g. phone shape) render
+      // the same way a client-side validation failure would.
+      if (result.data.fields) {
+        Object.entries(result.data.fields).forEach(([name, message]) => {
+          if (form.elements[name]) {
+            document.getElementById(name + '-error').textContent = message;
+            form.elements[name].setAttribute('aria-invalid', 'true');
+          }
+        });
+        form.elements[Object.keys(result.data.fields)[0]].focus();
       } else {
-        setStatus(result.message || 'Could not create your account. Try again.', true);
+        setStatus(result.data.message || 'Could not create your account. Try again.', true);
       }
     } catch (err) {
       setStatus('Something went wrong. Check your connection and try again.', true);

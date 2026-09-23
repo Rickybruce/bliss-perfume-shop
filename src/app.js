@@ -7,6 +7,11 @@ const helmet = require('helmet');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const db = require('./config/db');
+const { checkEnv } = require('./config/env');
+const authRoutes = require('./routes/auth.routes');
+const errorHandler = require('./middleware/error-handler.middleware');
+
+checkEnv();
 
 const app = express();
 
@@ -30,11 +35,12 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.redirect('/login.html');
-});
+app.use('/api/auth', authRoutes);
 
 // Serves everything in public/, e.g. http://localhost:3000/signup.html
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Must be registered after every route above.
+app.use(errorHandler);
 
 module.exports = app;

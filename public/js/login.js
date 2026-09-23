@@ -1,9 +1,7 @@
 (() => {
   'use strict';
 
-  // Set this to the Express route once it exists, e.g. '/api/auth/login'.
-  // While it's empty, submit just simulates success so you can test the form.
-  const API_URL = '';
+  const API_URL = '/api/auth/login';
 
   const form = document.getElementById('login-form');
   const submitBtn = document.getElementById('submit');
@@ -54,10 +52,6 @@
   }
 
   async function login(payload) {
-    if (!API_URL) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return { ok: true };
-    }
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,7 +59,7 @@
       body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, message: data.message };
+    return { ok: res.ok, status: res.status, data };
   }
 
   form.addEventListener('submit', async (event) => {
@@ -90,14 +84,19 @@
     try {
       const result = await login(payload);
       if (result.ok) {
-        // TODO: redirect once the server sets the login cookie, e.g. window.location.href = '/shop.html';
-        setStatus('Details look good. Login is not connected to the server yet.');
+        setStatus('Logged in. Redirecting...');
+        // TODO: point this at the shop home page once it exists
+        window.location.href = 'index.html';
+      } else if (result.status === 403 && result.data.userId) {
+        // Registered but never finished phone verification — send them
+        // back to that step instead of a dead-end error message.
+        sessionStorage.setItem('pendingUserId', result.data.userId);
+        setStatus('Verify your phone number to continue. Redirecting...');
+        window.location.href = 'verify-phone.html';
       } else if (result.status === 401) {
-        // The server should send the same reply for an unknown user and a wrong
-        // password, so nobody can use this form to find out who has an account.
         setStatus('Incorrect email, username or password.', true);
       } else {
-        setStatus(result.message || 'Could not log you in. Try again.', true);
+        setStatus(result.data.message || 'Could not log you in. Try again.', true);
       }
     } catch (err) {
       setStatus('Something went wrong. Check your connection and try again.', true);
