@@ -1,0 +1,196 @@
+/*
+  Perfume intro: a boxed bottle opens, the bottle rises, the cap lifts and it sprays.
+  Plays once per visit. Built by js/intro.js. Total run time is about 4.4s.
+
+  Timeline
+  0.0s  scene appears
+  0.5s  lid lifts off
+  1.0s  bottle rises out of the box
+  1.75s box drops away
+  2.0s  bottle settles to the middle
+  2.6s  cap lifts off
+  3.05s pump presses
+  3.1s  mist sprays
+  3.9s  overlay fades out
+*/
+
+/* Hide the page while the intro plays. If the script ever breaks,
+   this failsafe shows the page again after 7 seconds. */
+.intro-on body > *:not(.intro) {
+  visibility: hidden;
+  animation: introFailsafe 1ms linear 7s forwards;
+}
+
+@keyframes introFailsafe {
+  to { visibility: visible; }
+}
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: #121212;
+  cursor: pointer;
+  animation: introOut 0.5s ease 3.9s forwards;
+}
+
+@keyframes introOut {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+.intro-stage {
+  width: min(88vw, 340px);
+  animation: sceneIn 0.4s ease both;
+}
+
+@keyframes sceneIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.intro-stage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.intro-skip {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid #666;
+  border-radius: 999px;
+  color: #a0a0a0;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.intro-skip:hover {
+  color: #ececec;
+  border-color: #ececec;
+}
+
+.intro-skip:focus-visible {
+  outline: 2px solid #ececec;
+  outline-offset: 2px;
+}
+
+/* ---------- Colours ---------- */
+
+.i-box-body   { fill: #2b2320; stroke: #4a3d36; stroke-width: 1; }
+.i-box-lid    { fill: #352b27; stroke: #4a3d36; stroke-width: 1; }
+.i-ribbon     { fill: #b08d57; opacity: 0.85; }
+.i-glass      { fill: url(#ig-glass); stroke: #8f8879; stroke-width: 1; }
+.i-liquid     { fill: #c9975a; opacity: 0.85; }
+.i-label      { fill: #2b2320; }
+.i-label-line { fill: #b08d57; }
+.i-shine      { fill: #fff; opacity: 0.18; }
+.i-gold       { fill: #b08d57; }
+.i-gold-dark  { fill: #8a6f43; }
+.i-steel      { fill: #a59e91; }
+.i-mist circle,
+.i-cloud circle { fill: #f1e6d0; }
+
+/* ---------- Motion ---------- */
+
+/* Lid lifts off and drifts away */
+.i-lid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lidOff 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both;
+}
+
+@keyframes lidOff {
+  to { transform: translate(-46px, -74px) rotate(-14deg); opacity: 0; }
+}
+
+/* Bottle rises out, waits for the box to go, then settles in the middle */
+.i-bottle {
+  animation: bottleRise 1.5s cubic-bezier(0.3, 0.6, 0.2, 1) 1s both;
+}
+
+@keyframes bottleRise {
+  0%     { transform: translateY(0); }
+  46.7%  { transform: translateY(-140px); }
+  66.7%  { transform: translateY(-140px); }
+  100%   { transform: translateY(-90px); }
+}
+
+/* Box drops away once the bottle is clear of it */
+.i-box {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: boxOut 0.25s ease 1.75s both;
+}
+
+@keyframes boxOut {
+  to { opacity: 0; transform: translateY(24px); }
+}
+
+/* Cap lifts off and tilts away, revealing the pump */
+.i-cap {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: capOff 0.45s cubic-bezier(0.3, 0.7, 0.3, 1) 2.6s both;
+}
+
+@keyframes capOff {
+  to { transform: translate(26px, -38px) rotate(16deg); }
+}
+
+/* Pump presses down */
+.i-pump {
+  animation: pumpPress 0.3s ease 3.05s both;
+}
+
+@keyframes pumpPress {
+  0%, 100% { transform: translateY(0); }
+  45%      { transform: translateY(5px); }
+}
+
+/* Mist: small droplets plus two soft clouds, drifting up and to the left */
+.i-mist circle,
+.i-cloud circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.i-mist circle {
+  animation: puff 0.9s ease-out var(--d) both;
+}
+
+@keyframes puff {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.9); }
+}
+
+.i-mist circle:nth-child(1) { --dx: -62px; --dy: -10px; --d: 3.10s; }
+.i-mist circle:nth-child(2) { --dx: -84px; --dy: -22px; --d: 3.14s; }
+.i-mist circle:nth-child(3) { --dx: -48px; --dy: -30px; --d: 3.18s; }
+.i-mist circle:nth-child(4) { --dx: -96px; --dy: -8px;  --d: 3.22s; }
+.i-mist circle:nth-child(5) { --dx: -70px; --dy: -40px; --d: 3.26s; }
+.i-mist circle:nth-child(6) { --dx: -104px; --dy: -30px; --d: 3.30s; }
+.i-mist circle:nth-child(7) { --dx: -56px; --dy: 4px;   --d: 3.34s; }
+.i-mist circle:nth-child(8) { --dx: -88px; --dy: -46px; --d: 3.38s; }
+.i-mist circle:nth-child(9) { --dx: -76px; --dy: -2px;  --d: 3.42s; }
+
+.i-cloud circle {
+  animation: cloud 1.1s ease-out var(--d) both;
+}
+
+@keyframes cloud {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  30%  { opacity: 0.16; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(2.6); }
+}
+
+.i-cloud circle:nth-child(1) { --dx: -60px; --dy: -14px; --d: 3.12s; }
+.i-cloud circle:nth-child(2) { --dx: -90px; --dy: -28px; --d: 3.22s; }

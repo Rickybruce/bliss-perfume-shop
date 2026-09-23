@@ -30,6 +30,10 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
 // Serves everything in public/, e.g. http://localhost:3000/signup.html
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
