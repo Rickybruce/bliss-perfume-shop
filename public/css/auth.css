@@ -190,6 +190,29 @@ input:-webkit-autofill {
   color: var(--text);
 }
 
+/* A <button> that reads as a link, e.g. "Resend" on the verify-phone page */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  text-decoration: underline;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.link-btn:disabled {
+  color: var(--muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.link-btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   input,
   .toggle {

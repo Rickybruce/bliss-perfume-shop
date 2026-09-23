@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Verify your phone</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <main class="auth">
+    <!-- TODO: replace with the shop's real name -->
+    <p class="brand">Shop name</p>
+
+    <h1>Verify your phone</h1>
+    <p class="lede" id="lede">We sent a 6-digit code by SMS.</p>
+
+    <form id="verify-form" novalidate>
+      <div class="field">
+        <label for="code">Verification code</label>
+        <input id="code" name="code" type="text" inputmode="numeric" pattern="\d*"
+               maxlength="6" autocomplete="one-time-code"
+               aria-describedby="code-error">
+        <p class="error" id="code-error"></p>
+      </div>
+
+      <button type="submit" class="submit" id="submit">Verify</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="switch">
+      Didn't get a code?
+      <button type="button" class="link-btn" id="resend">Resend</button>
+    </p>
+  </main>
+
+  <script src="js/verify-phone.js"></script>
+</body>
+</html>

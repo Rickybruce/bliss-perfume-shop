@@ -1,0 +1,44 @@
+/* Login-only additions. Everything else comes from auth.css. */
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 24px;
+  font-size: 0.875rem;
+}
+
+/* auth.css styles every <input> as a full-width text field, so reset it for the checkbox */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--text);
+  cursor: pointer;
+}
+
+.link {
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.link:hover {
+  color: var(--text);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}

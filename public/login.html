@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Log in</title>
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/intro.css">
+  <!-- Must stay in <head> and NOT deferred, so the page is hidden from first paint while the intro plays -->
+  <script src="js/intro.js"></script>
+</head>
+<body>
+  <main class="auth">
+    <!-- TODO: replace with the shop's real name -->
+    <p class="brand">Shop name</p>
+
+    <h1>Welcome back</h1>
+    <p class="lede">Log in to place and track orders.</p>
+
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label for="identifier">Email or username</label>
+        <input id="identifier" name="identifier" type="text"
+               autocomplete="username" autocapitalize="none" spellcheck="false"
+               aria-describedby="identifier-error">
+        <p class="error" id="identifier-error"></p>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input id="password" name="password" type="password" maxlength="72"
+                 autocomplete="current-password"
+                 aria-describedby="password-error">
+          <button type="button" class="toggle" id="toggle-password" aria-label="Show password">Show</button>
+        </div>
+        <p class="error" id="password-error"></p>
+      </div>
+
+      <div class="row-between">
+        <label class="checkbox">
+          <input type="checkbox" id="remember" name="remember">
+          <span>Keep me logged in</span>
+        </label>
+        <a href="forgot-password.html" class="link">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="submit" id="submit">Log in</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="switch">New here? <a href="signup.html">Create an account</a></p>
+  </main>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

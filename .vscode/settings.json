@@ -20,6 +20,14 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "netstat": true
+        "netstat": true,
+        "/^node -e \"require\\('\\./src/app'\\); console\\.log\\('app loaded'\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node server\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
