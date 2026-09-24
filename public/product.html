@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <!-- Title is filled by JS once the product loads -->
+  <title>Product — Bliss Perfumes</title>
+  <link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="index.html">Shop name</a>
+    <nav>
+      <span id="nav-account">
+        <a href="login.html">Log in</a>
+      </span>
+      <a class="cart-link" href="cart.html" aria-label="Cart">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        Cart
+      </a>
+    </nav>
+  </header>
+
+  <main class="product-detail-main" id="main">
+    <a class="back-link" href="index.html">← Back to shop</a>
+
+    <!-- Filled by product.js once the product loads.
+         The page-status element is shown while loading or on error. -->
+    <p class="page-status" id="page-status" role="status" aria-live="polite">Loading...</p>
+
+    <div class="product-layout" id="product-layout" hidden>
+
+      <!-- Left: images -->
+      <div class="product-images" id="product-images">
+        <!-- Primary image or placeholder -->
+        <div id="main-image-wrap"></div>
+        <!-- Thumbnail strip (hidden when there is only one image) -->
+        <div class="product-thumbs" id="product-thumbs" hidden></div>
+      </div>
+
+      <!-- Right: info + actions -->
+      <div class="product-info" id="product-info">
+
+        <div>
+          <p class="product-brand" id="product-brand"></p>
+          <h1 class="product-name" id="product-name"></h1>
+          <span class="product-concentration" id="product-concentration" hidden></span>
+        </div>
+
+        <p class="product-description" id="product-description" hidden></p>
+
+        <!-- Scent notes (hidden when all three are empty) -->
+        <section class="scent-notes" id="scent-notes" hidden aria-label="Scent notes">
+          <h3>Scent notes</h3>
+          <div class="notes-row" id="notes-row"></div>
+        </section>
+
+        <!-- Variant picker -->
+        <div class="variant-picker" id="variant-picker">
+          <h3>Select size</h3>
+          <div class="variant-options" id="variant-options" role="radiogroup"
+               aria-label="Size options">
+            <!-- Variant buttons injected by JS -->
+          </div>
+        </div>
+
+        <!-- Quantity -->
+        <div class="qty-row" id="qty-row" hidden>
+          <label for="qty-display">Qty</label>
+          <div class="qty-control">
+            <button class="qty-btn" id="qty-dec" type="button"
+                    aria-label="Decrease quantity">−</button>
+            <span class="qty-display" id="qty-display" aria-live="polite"
+                  aria-atomic="true">1</span>
+            <button class="qty-btn" id="qty-inc" type="button"
+                    aria-label="Increase quantity">+</button>
+          </div>
+        </div>
+
+        <!-- Add to cart -->
+        <div class="add-to-cart-wrap" id="add-to-cart-wrap" hidden>
+          <button class="add-to-cart" id="add-to-cart" type="button">
+            Add to cart
+          </button>
+          <p class="out-of-stock-msg" id="out-of-stock-msg" aria-live="polite">
+            Out of stock
+          </p>
+          <p class="cart-feedback" id="cart-feedback" aria-live="polite"></p>
+        </div>
+
+      </div><!-- /product-info -->
+    </div><!-- /product-layout -->
+  </main>
+
+  <script src="js/product.js"></script>
+</body>
+</html>

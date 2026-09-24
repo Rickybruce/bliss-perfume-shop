@@ -1,12 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="refresh" content="0; url=login.html">
-	<title>Bliss Perfumes</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Bliss Perfumes</title>
+  <link rel="stylesheet" href="css/shop.css">
 </head>
 <body>
-	<p>Redirecting to <a href="login.html">login</a>...</p>
+
+  <header class="site-header">
+    <!-- TODO: replace "Shop name" with the real brand name -->
+    <a class="brand" href="index.html">Shop name</a>
+    <nav>
+      <span id="nav-account">
+        <!-- Filled by JS: shows "Log in" when logged out, username when logged in -->
+        <a href="login.html">Log in</a>
+      </span>
+      <a class="cart-link" href="cart.html" aria-label="Cart">
+        <!-- Simple bag icon (inline SVG, no external request) -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        Cart
+      </a>
+    </nav>
+  </header>
+
+  <!-- Filters -->
+  <div class="filters" role="search" aria-label="Filter products">
+    <div class="filter-group">
+      <label for="filter-scent">Scent family</label>
+      <select id="filter-scent" name="scentFamily">
+        <option value="">All scents</option>
+        <!-- Options populated by JS -->
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filter-concentration">Concentration</label>
+      <select id="filter-concentration" name="concentration">
+        <option value="">All types</option>
+        <!-- Options populated by JS -->
+      </select>
+    </div>
+  </div>
+
+  <!-- Product grid -->
+  <main class="shop-main" id="main">
+    <div class="product-grid" id="product-grid" aria-live="polite" aria-busy="true">
+      <p class="grid-message" id="grid-status">Loading...</p>
+    </div>
+  </main>
+
+  <script src="js/shop.js"></script>
 </body>
 </html>

@@ -9,6 +9,9 @@ const cookieParser = require('cookie-parser');
 const db = require('./config/db');
 const { checkEnv } = require('./config/env');
 const authRoutes = require('./routes/auth.routes');
+const productRoutes = require('./routes/product.routes');
+const orderRoutes = require('./routes/order.routes');
+const adminRoutes = require('./routes/admin.routes');
 const errorHandler = require('./middleware/error-handler.middleware');
 
 checkEnv();
@@ -36,6 +39,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serves everything in public/, e.g. http://localhost:3000/signup.html
 app.use(express.static(path.join(__dirname, '..', 'public')));
