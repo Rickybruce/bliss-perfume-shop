@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Order — Bliss Perfumes</title>
+  <link rel="stylesheet" href="css/account.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="index.html">Shop name</a>
+    <nav>
+      <a href="account.html">Account</a>
+      <a class="cart-link" href="cart.html">Cart</a>
+    </nav>
+  </header>
+
+  <main class="account-main">
+    <a class="back-link" href="orders.html">← All orders</a>
+    <h1 id="order-heading">Order</h1>
+    <p class="page-status" id="page-status" role="status" aria-live="polite">Loading...</p>
+
+    <div id="order-content" hidden>
+      <dl class="dl">
+        <div class="dl-row">
+          <dt>Status</dt>
+          <dd id="order-status"></dd>
+        </div>
+        <div class="dl-row">
+          <dt>Fulfillment</dt>
+          <dd id="order-fulfillment"></dd>
+        </div>
+        <div class="dl-row">
+          <dt>Placed</dt>
+          <dd id="order-date"></dd>
+        </div>
+        <div class="dl-row">
+          <dt>Total</dt>
+          <dd id="order-total"></dd>
+        </div>
+      </dl>
+
+      <h2 class="section-title">Items</h2>
+      <div id="order-items"></div>
+    </div>
+  </main>
+
+  <script src="js/order-detail.js"></script>
+</body>
+</html>

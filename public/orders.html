@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Orders — Bliss Perfumes</title>
+  <link rel="stylesheet" href="css/account.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="index.html">Shop name</a>
+    <nav>
+      <a href="account.html">Account</a>
+      <a class="cart-link" href="cart.html">Cart</a>
+    </nav>
+  </header>
+
+  <main class="account-main">
+    <a class="back-link" href="account.html">← Account</a>
+    <h1>Your orders</h1>
+    <p class="lede">Orders placed with this account.</p>
+    <p class="page-status" id="page-status" role="status" aria-live="polite">Loading...</p>
+    <ul class="order-list" id="order-list" hidden></ul>
+  </main>
+
+  <script src="js/orders.js"></script>
+</body>
+</html>

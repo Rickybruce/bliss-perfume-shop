@@ -293,26 +293,53 @@
     cartFeedback.textContent = '';
   }
 
-  // ── Add to cart (stub — cart storage not built yet) ───────────────────
+  // ── Add to cart (localStorage — same key checkout.js reads) ───────────
+  const CART_KEY = 'perfume_cart';
+
+  function readCart() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeCart(cart) {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  }
+
   addToCartBtn.addEventListener('click', () => {
     if (!selectedVariant || selectedVariant.stock === 0) return;
 
-    const payload = {
-      productId: product.id,
-      productName: product.name,
-      variantId: selectedVariant.id,
-      sizeMl: selectedVariant.size_ml,
-      // Price is sent along for display purposes only.
-      // The server MUST recalculate from the DB at checkout — never trust
-      // a client-sent price (README convention #4).
-      pricePesewas: selectedVariant.price_pesewas,
-      quantity,
-    };
+    const cart = readCart();
+    const existing = cart.find(
+      (item) => Number(item.variantId) === Number(selectedVariant.id)
+    );
 
-    // TODO: replace with real cart storage (localStorage or API) once cart is built.
-    console.log('[Cart] Add to cart payload:', payload);
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      const imageUrl =
+        product.images && product.images[0] && product.images[0].url
+          ? product.images[0].url
+          : '';
+      cart.push({
+        variantId: selectedVariant.id,
+        productId: product.id,
+        productName: product.name,
+        brand: product.brand || '',
+        sizeMl: selectedVariant.size_ml,
+        // Price is for display only. Checkout recalculates from the DB
+        // (README convention #4).
+        pricePesewas: selectedVariant.price_pesewas,
+        quantity,
+        imageUrl,
+      });
+    }
 
-    // Optimistic feedback
+    writeCart(cart);
+
     cartFeedback.textContent = 'Added to cart!';
     setTimeout(() => {
       cartFeedback.textContent = '';
