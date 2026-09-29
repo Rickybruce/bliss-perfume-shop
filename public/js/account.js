@@ -31,7 +31,20 @@
       document.getElementById('account-username').textContent = user.username || '—';
       document.getElementById('account-email').textContent = user.email || '—';
       document.getElementById('account-phone').textContent = user.phone || '—';
-      navAccount.innerHTML = `<a href="account.html">${escapeHtml(user.username || 'Account')}</a>`;
+      const adminNav = user.role === 'admin' ? '<a href="admin/index.html" style="color:var(--text);margin-right:12px;">Admin</a>' : '';
+      navAccount.innerHTML = `${adminNav}<a href="account.html">${escapeHtml(user.username || 'Account')}</a>`;
+
+      if (user.role === 'admin') {
+        const actionsEl = contentEl.querySelector('.actions');
+        if (actionsEl && !document.getElementById('admin-portal-btn')) {
+          const adminBtn = document.createElement('a');
+          adminBtn.id = 'admin-portal-btn';
+          adminBtn.className = 'btn btn-ghost';
+          adminBtn.href = 'admin/index.html';
+          adminBtn.textContent = 'Admin portal';
+          actionsEl.insertBefore(adminBtn, logoutBtn);
+        }
+      }
 
       statusEl.hidden = true;
       contentEl.hidden = false;

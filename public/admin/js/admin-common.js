@@ -8,10 +8,9 @@
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (!res.ok) {
-        // login.js only recognises a relative "?next=" target, one folder
-        // deep at most — e.g. "admin/orders.html", not a full pathname.
-        const page = window.location.pathname.split('/').filter(Boolean).slice(-2).join('/');
-        window.location.href = '/login.html?next=' + encodeURIComponent(page);
+        let filename = window.location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+        if (!filename.endsWith('.html')) filename = 'index.html';
+        window.location.href = '/login.html?next=' + encodeURIComponent('admin/' + filename);
         return;
       }
       const user = await res.json();
