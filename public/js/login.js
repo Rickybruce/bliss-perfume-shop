@@ -46,12 +46,12 @@
     toggleBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
 
-  // Only accept a relative filename, like "checkout.html" or
-  // "admin/products.html" — never a full URL or a leading slash, which
-  // could be used to redirect a logged-in session elsewhere.
+  // Accepts a relative filename like "checkout.html", or one subfolder deep
+  // like "admin/orders.html" — never a full URL or an absolute path, which
+  // could be used to redirect a logged-in session somewhere unintended.
   function getNextPage() {
     const next = new URLSearchParams(window.location.search).get('next');
-    return next && /^(?:admin\/)?[a-z0-9_-]+\.html$/i.test(next) ? next : 'index.html';
+    return next && /^[a-z0-9_-]+(\/[a-z0-9_-]+)?\.html$/i.test(next) ? next : 'index.html';
   }
   function setStatus(message, isError) {
     statusEl.textContent = message;

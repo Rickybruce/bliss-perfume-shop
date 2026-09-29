@@ -4,18 +4,14 @@
 (() => {
   'use strict';
 
-  // login.js only accepts a relative path (no leading slash), e.g.
-  // admin/products.html — not the full window.location.pathname.
-  function adminNextPage() {
-    const path = window.location.pathname.replace(/^\/+/, '');
-    return /^admin\/[a-z0-9_-]+\.html$/i.test(path) ? path : 'admin/index.html';
-  }
-
   async function checkAdminAuth() {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (!res.ok) {
-        window.location.href = '/login.html?next=' + encodeURIComponent(adminNextPage());
+        // login.js only recognises a relative "?next=" target, one folder
+        // deep at most — e.g. "admin/orders.html", not a full pathname.
+        const page = window.location.pathname.split('/').filter(Boolean).slice(-2).join('/');
+        window.location.href = '/login.html?next=' + encodeURIComponent(page);
         return;
       }
       const user = await res.json();
@@ -29,7 +25,7 @@
       const userEl = document.getElementById('admin-username');
       if (userEl) userEl.textContent = user.username;
     } catch (_) {
-      window.location.href = '/login.html?next=' + encodeURIComponent(adminNextPage());
+      window.location.href = '/login.html';
     }
   }
 
