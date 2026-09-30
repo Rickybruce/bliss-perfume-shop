@@ -61,8 +61,9 @@
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
+        const adminBadge = data.role === 'admin' ? '<a href="admin/index.html" style="color:var(--text);margin-right:12px;">Admin</a>' : '';
         navAccount.innerHTML =
-          `<a href="account.html">${escapeHtml(data.username)}</a>`;
+          `${adminBadge}<a href="account.html">${escapeHtml(data.username)}</a>`;
       }
     } catch (_) { /* not logged in */ }
   }
@@ -293,24 +294,37 @@
     cartFeedback.textContent = '';
   }
 
-  // ── Add to cart (stub — cart storage not built yet) ───────────────────
+  // ── Add to cart ─────────────────────────────────────────────────────
   addToCartBtn.addEventListener('click', () => {
     if (!selectedVariant || selectedVariant.stock === 0) return;
 
-    const payload = {
-      productId: product.id,
-      productName: product.name,
-      variantId: selectedVariant.id,
-      sizeMl: selectedVariant.size_ml,
-      // Price is sent along for display purposes only.
-      // The server MUST recalculate from the DB at checkout — never trust
-      // a client-sent price (README convention #4).
-      pricePesewas: selectedVariant.price_pesewas,
-      quantity,
-    };
+    const CART_KEY = 'perfume_cart';
+    let cart = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      if (Array.isArray(raw)) cart = raw;
+    } catch (_) {
+      cart = [];
+    }
 
-    // TODO: replace with real cart storage (localStorage or API) once cart is built.
-    console.log('[Cart] Add to cart payload:', payload);
+    const existingIndex = cart.findIndex((item) => item.variantId === selectedVariant.id);
+    if (existingIndex > -1) {
+      cart[existingIndex].quantity += quantity;
+    } else {
+      cart.push({
+        variantId: selectedVariant.id,
+        productId: product.id,
+        productName: product.name,
+        brand: product.brand || '',
+        sizeMl: selectedVariant.size_ml,
+        pricePesewas: selectedVariant.price_pesewas,
+        quantity,
+        imageUrl: (product.images && product.images[0] && product.images[0].url) || '',
+      });
+    }
+
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    updateCartBadge();
 
     // Optimistic feedback
     cartFeedback.textContent = 'Added to cart!';
@@ -319,7 +333,19 @@
     }, 2500);
   });
 
+  function updateCartBadge() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+      const count = Array.isArray(raw) ? raw.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0;
+      const cartLink = document.querySelector('.cart-link');
+      if (cartLink && count > 0) {
+        cartLink.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Cart (${count})`;
+      }
+    } catch (_) {}
+  }
+
   // ── Init ──────────────────────────────────────────────────────────────
   checkSession();
+  updateCartBadge();
   loadProduct();
 })();

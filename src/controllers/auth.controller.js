@@ -109,7 +109,13 @@ async function me(req, res, next) {
   try {
     const user = await userRepo.findById(req.user.id);
     if (!user) throw new AppError(401, 'Please log in.');
-    res.json({ id: user.id, username: user.username, email: user.email, role: user.role });
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    });
   } catch (err) {
     next(err);
   }

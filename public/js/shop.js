@@ -27,12 +27,24 @@
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
         const data = await res.json();
+        const adminBadge = data.role === 'admin' ? '<a href="admin/index.html" style="color:var(--text);margin-right:12px;">Admin</a>' : '';
         navAccount.innerHTML =
-          `<a href="account.html">${escapeHtml(data.username)}</a>`;
+          `${adminBadge}<a href="account.html">${escapeHtml(data.username)}</a>`;
       }
     } catch (_) {
       // Not logged in or network error — keep "Log in" link
     }
+  }
+
+  function updateCartBadge() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('perfume_cart') || '[]');
+      const count = Array.isArray(raw) ? raw.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0) : 0;
+      const cartLink = document.querySelector('.cart-link');
+      if (cartLink && count > 0) {
+        cartLink.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Cart (${count})`;
+      }
+    } catch (_) {}
   }
 
   function escapeHtml(str) {
@@ -183,6 +195,7 @@
 
   // ── Init ─────────────────────────────────────────────────────────────
   checkSession();
+  updateCartBadge();
   loadFilters();
   loadProducts();
 })();

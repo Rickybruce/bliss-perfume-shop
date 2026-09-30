@@ -88,7 +88,8 @@
             <input type="text" id="base_notes" name="base_notes" placeholder="e.g. Vanilla, Amber, Musk">
           </div>
 
-          <!-- Initial Variant -->
+          <!-- Initial Variant (create only — editing sizes happens in the Sizes card below) -->
+          <div id="initial-variant-fields" style="display:contents;">
           <div class="section-divider">Bottle Size & Pricing (Primary Variant)</div>
 
           <div class="form-group">
@@ -110,8 +111,10 @@
             <label for="sku">SKU (optional)</label>
             <input type="text" id="sku" name="sku" placeholder="e.g. LAT-ANG-100">
           </div>
+          </div>
 
-          <!-- Image -->
+          <!-- Image (create only — additional images are added in the Images card below) -->
+          <div id="initial-image-field" style="display:contents;">
           <div class="section-divider">Media & Visibility</div>
 
           <div class="form-group full">
@@ -120,6 +123,7 @@
             <span style="font-size: 0.8rem; color: var(--muted); margin-top: 4px;">
               Can be a local path in <code>public/images/</code> (like <code>/images/filename.webp</code>) or an external Cloudinary URL.
             </span>
+          </div>
           </div>
 
           <div class="form-group full" style="margin-top: 8px;">
@@ -136,6 +140,30 @@
 
         </div>
       </form>
+    </div>
+
+    <div class="form-card" id="variants-card" style="margin-top:20px;" hidden>
+      <h2 style="margin-top:0;font-size:1.1rem;">Sizes</h2>
+      <div id="variant-list"></div>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="form-group"><label>Size (ml)</label><input type="number" id="new-size-ml" min="1"></div>
+        <div class="form-group"><label>Price (GHS)</label><input type="number" id="new-size-price" min="0.01" step="0.01"></div>
+        <div class="form-group"><label>Stock</label><input type="number" id="new-size-stock" min="0" value="0"></div>
+        <div class="form-group"><label>SKU (optional)</label><input type="text" id="new-size-sku"></div>
+      </div>
+      <button type="button" class="btn btn-secondary" id="add-variant-btn">+ Add size</button>
+      <div id="variant-status" class="status-msg"></div>
+    </div>
+
+    <div class="form-card" id="images-card" style="margin-top:20px;" hidden>
+      <h2 style="margin-top:0;font-size:1.1rem;">Images</h2>
+      <p style="color:var(--muted);font-size:0.85rem;">A local path like <code>/images/name.webp</code> or a Cloudinary URL.</p>
+      <div id="image-list"></div>
+      <div class="form-grid">
+        <div class="form-group full"><label>Image URL or path</label><input type="text" id="new-image-url" placeholder="/images/... or https://..."></div>
+      </div>
+      <button type="button" class="btn btn-secondary" id="add-image-btn">+ Add image</button>
+      <div id="image-status" class="status-msg"></div>
     </div>
   </main>
 

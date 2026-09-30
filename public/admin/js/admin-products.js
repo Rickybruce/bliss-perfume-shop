@@ -60,6 +60,11 @@
           <td>${formatPrice(p.min_price_pesewas)}</td>
           <td>${statusTag}</td>
           <td>
+            <a href="product-form.html?id=${p.id}" style="color: var(--text); text-decoration: underline; font-size: 0.85rem;">Edit</a><br>
+            <button type="button" class="publish-toggle" data-id="${p.id}" data-published="${p.is_published ? '1' : '0'}"
+              style="background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;font-size:0.85rem;cursor:pointer;">
+              ${p.is_published ? 'Hide' : 'Publish'}
+            </button><br>
             <a href="/product.html?id=${p.id}" target="_blank" style="color: var(--text); text-decoration: underline; font-size: 0.85rem;">
               View ↗
             </a>
@@ -80,4 +85,27 @@
   }
 
   document.addEventListener('DOMContentLoaded', loadProducts);
+
+  document.getElementById('products-table-body').addEventListener('click', async (event) => {
+    const btn = event.target.closest('.publish-toggle');
+    if (!btn) return;
+    const isPublished = btn.dataset.published === '1';
+
+    try {
+      const res = await fetch(`/api/admin/products/${btn.dataset.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ is_published: !isPublished }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Could not update this product.');
+        return;
+      }
+      loadProducts();
+    } catch (err) {
+      alert('Network error. Try again.');
+    }
+  });
 })();

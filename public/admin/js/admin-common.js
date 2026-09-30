@@ -8,7 +8,9 @@
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (!res.ok) {
-        window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+        let filename = window.location.pathname.split('/').filter(Boolean).pop() || 'index.html';
+        if (!filename.endsWith('.html')) filename = 'index.html';
+        window.location.href = '/login.html?next=' + encodeURIComponent('admin/' + filename);
         return;
       }
       const user = await res.json();

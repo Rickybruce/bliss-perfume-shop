@@ -1,0 +1,236 @@
+/* Account / orders: dark, minimal. Reuses auth.css variables. */
+
+:root {
+  color-scheme: dark;
+  --bg: #121212;
+  --field: #1a1a1a;
+  --border: #666;
+  --text: #ececec;
+  --muted: #a0a0a0;
+  --error: #ff8a80;
+  --radius: 6px;
+  --card-border: #2a2a2a;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header .brand {
+  margin: 0;
+  color: var(--muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.05rem;
+  text-decoration: none;
+}
+
+.site-header nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.site-header nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.site-header nav a:hover,
+.site-header nav a:focus-visible {
+  color: var(--text);
+}
+
+.cart-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.cart-link:hover,
+.cart-link:focus-visible {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.account-main {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.lede,
+.page-status {
+  margin: 0 0 28px;
+  color: var(--muted);
+}
+
+.page-status.is-error {
+  color: var(--error);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  color: var(--text);
+}
+
+.dl {
+  margin: 0 0 28px;
+  padding: 0;
+}
+
+.dl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.dl-row dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dl-row dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 16px;
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+  border-radius: var(--radius);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.order-list li {
+  margin: 0;
+}
+
+.order-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--card-border);
+  color: inherit;
+  text-decoration: none;
+}
+
+.order-card:hover,
+.order-card:focus-visible {
+  color: var(--text);
+}
+
+.order-card-meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.order-card-total {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 0.95rem;
+}
+
+.item-row span:last-child {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.section-title {
+  margin: 0 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
