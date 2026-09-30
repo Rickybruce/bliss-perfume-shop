@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth.middleware');
 const { requireAdmin } = require('../middleware/admin.middleware');
 const validate = require('../middleware/validate.middleware');
 const { createProductSchema } = require('../validators/product.validator');
+const { updateOrderStatusSchema } = require('../validators/order.validator');
 
 const router = express.Router();
 
@@ -15,5 +16,8 @@ router.get('/products', controller.listProducts);
 
 // POST /api/admin/products — create a new product with variant and image
 router.post('/products', validate(createProductSchema), controller.createProduct);
+router.get('/orders', controller.listOrders);
+router.get('/orders/:id', controller.getOrder);
+router.patch('/orders/:id/status', validate(updateOrderStatusSchema), controller.updateOrderStatus);
 
 module.exports = router;

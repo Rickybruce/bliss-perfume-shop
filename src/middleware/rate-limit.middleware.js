@@ -18,4 +18,12 @@ const otpLimiter = rateLimit({
   message: { message: 'Too many attempts. Try again in a few minutes.' },
 });
 
-module.exports = { loginLimiter, otpLimiter };
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many checkout attempts. Try again in a few minutes.' },
+});
+
+module.exports = { loginLimiter, otpLimiter, checkoutLimiter };

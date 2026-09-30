@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#121212">
+	<title>Checkout — Bliss Perfumes</title>
+	<link rel="stylesheet" href="css/auth.css">
+	<link rel="stylesheet" href="css/checkout.css">
+</head>
+<body>
+	<header class="checkout-header">
+		<a class="brand" href="index.html">Bliss Perfumes</a>
+		<a class="cart-link" href="cart.html">Back to cart</a>
+	</header>
+
+	<main class="checkout-main">
+		<div class="page-heading">
+			<p class="eyebrow">YOUR ORDER</p>
+			<h1>Checkout</h1>
+		</div>
+
+		<div class="checkout-layout">
+			<section class="checkout-section" aria-labelledby="details-heading">
+				<h2 id="details-heading">Fulfilment details</h2>
+				<form id="checkout-form" novalidate>
+					<section class="customer-details" aria-labelledby="customer-details-heading">
+						<h3 id="customer-details-heading">Your details</h3>
+						<p><span>Name</span><strong id="customer-name">Checking sign-in…</strong></p>
+						<p><span>Email</span><strong id="customer-email">—</strong></p>
+						<p><span>Phone</span><strong id="customer-phone">—</strong></p>
+					</section>
+					<fieldset class="fulfilment-options">
+						<legend>How would you like your order?</legend>
+						<label class="fulfilment-option">
+							<input type="radio" name="fulfillmentType" value="ucc_pickup" checked>
+							<span><strong>UCC campus pickup</strong><small>Collect in person. No delivery fee.</small></span>
+							<span class="option-price">Free</span>
+						</label>
+						<label class="fulfilment-option">
+							<input type="radio" name="fulfillmentType" value="junction">
+							<span><strong>Junction collection</strong><small>Collect from a named junction.</small></span>
+							<span class="option-price">GHS 5.00</span>
+						</label>
+						<label class="fulfilment-option">
+							<input type="radio" name="fulfillmentType" value="house_delivery">
+							<span><strong>House delivery</strong><small>Delivery from the junction to your address.</small></span>
+							<span class="option-price">GHS 10.00</span>
+						</label>
+					</fieldset>
+
+					<div class="field" id="junction-field" hidden>
+						<label for="junction-name">Collection junction</label>
+						<input id="junction-name" name="junctionName" maxlength="120" autocomplete="off" placeholder="e.g. Abura Market">
+						<p class="field-error" id="junctionName-error" role="alert"></p>
+					</div>
+
+					<div class="field" id="address-fields" hidden>
+						<label for="address-line1">House or hall address</label>
+						<input id="address-line1" name="addressLine1" maxlength="190" autocomplete="street-address" placeholder="House number, street, hall">
+						<p class="field-error" id="address-error" role="alert"></p>
+					</div>
+					<div class="field" id="address-city-field" hidden>
+						<label for="address-city">Town or city</label>
+						<input id="address-city" name="addressCity" maxlength="100" autocomplete="address-level2" value="Cape Coast">
+					</div>
+					<div class="field" id="address-landmark-field" hidden>
+						<label for="address-landmark">Nearby landmark <span>(optional)</span></label>
+						<input id="address-landmark" name="addressLandmark" maxlength="190" placeholder="A nearby landmark">
+					</div>
+
+					<p class="payment-note">Payment arrangements will be confirmed after your order is placed.</p>
+					<button class="submit" id="submit" type="submit">Place order</button>
+					<p class="status" id="status" role="status" aria-live="polite"></p>
+				</form>
+			</section>
+
+			<aside class="summary-section" aria-labelledby="summary-heading">
+				<h2 id="summary-heading">Order summary</h2>
+				<ul id="summary-list" class="summary-list" aria-live="polite"></ul>
+				<dl class="totals">
+					<div><dt>Subtotal</dt><dd id="summary-subtotal">GHS 0.00</dd></div>
+					<div><dt>Fulfilment fee</dt><dd id="summary-fee">GHS 0.00</dd></div>
+					<div class="grand-total"><dt>Total</dt><dd id="summary-total">GHS 0.00</dd></div>
+				</dl>
+			</aside>
+		</div>
+	</main>
+	<script src="js/checkout.js" defer></script>
+</body>
+</html>
