@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#121212">
+	<title>Order received — Bliss Perfumes</title>
+	<link rel="stylesheet" href="css/auth.css">
+	<link rel="stylesheet" href="css/checkout.css">
+</head>
+<body>
+	<header class="checkout-header">
+		<a class="brand" href="index.html">Bliss Perfumes</a>
+		<a class="cart-link" href="index.html">Continue shopping</a>
+	</header>
+	<main class="success-main" aria-labelledby="success-title">
+		<p class="eyebrow">ORDER RECEIVED</p>
+		<h1 id="success-title">Thank you for your order.</h1>
+		<p id="order-number" class="order-number">Loading order details…</p>
+		<p id="success-message" class="success-message" role="status" aria-live="polite"></p>
+		<section id="pickup-code-panel" class="pickup-code-panel" hidden aria-labelledby="pickup-code-heading">
+			<h2 id="pickup-code-heading">Your campus pickup code</h2>
+			<p id="pickup-code" class="pickup-code"></p>
+			<p>Keep this code private and show it to the shop owner when collecting your order.</p>
+		</section>
+		<a class="submit order-link" href="orders.html">View your orders</a>
+	</main>
+	<script src="js/order-success.js" defer></script>
+</body>
+</html>

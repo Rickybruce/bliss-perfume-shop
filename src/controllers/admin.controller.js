@@ -1,4 +1,6 @@
 const productRepo = require('../repositories/product.repository');
+const orderService = require('../services/order.service');
+const { parseOrderId } = require('./order.controller');
 
 /**
  * GET /api/admin/products
@@ -78,7 +80,37 @@ async function createProduct(req, res, next) {
   }
 }
 
+async function listOrders(req, res, next) {
+  try {
+    const orders = await orderService.listForAdmin();
+    res.json({ orders });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getOrder(req, res, next) {
+  try {
+    const order = await orderService.getForAdmin(parseOrderId(req.params.id));
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateOrderStatus(req, res, next) {
+  try {
+    const result = await orderService.updateStatus(parseOrderId(req.params.id), req.body.status);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listProducts,
   createProduct,
+  listOrders,
+  getOrder,
+  updateOrderStatus,
 };

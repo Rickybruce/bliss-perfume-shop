@@ -15,7 +15,7 @@ async function findVariantForUpdate(conn, variantId) {
     `SELECT pv.id, pv.product_id, pv.size_ml, pv.price_pesewas, pv.stock, p.name AS product_name
      FROM product_variants pv
      JOIN products p ON p.id = pv.product_id
-     WHERE pv.id = ? FOR UPDATE`,
+    WHERE pv.id = ? AND p.is_published = 1 FOR UPDATE`,
     [variantId]
   );
   return rows[0] || null;
@@ -73,8 +73,37 @@ async function findPickupCode(conn, orderId) {
   return rows[0] || null;
 }
 
+async function findPickupCodeForUpdate(conn, orderId) {
+  const [rows] = await conn.query(
+    'SELECT id, code_hash, used_at FROM pickup_codes WHERE order_id = ? ORDER BY id DESC LIMIT 1 FOR UPDATE',
+    [orderId]
+  );
+  return rows[0] || null;
+}
+
 async function markPickupCodeUsed(conn, id) {
-  await conn.query('UPDATE pickup_codes SET used_at = NOW() WHERE id = ?', [id]);
+  const [result] = await conn.query('UPDATE pickup_codes SET used_at = NOW() WHERE id = ? AND used_at IS NULL', [id]);
+  return result.affectedRows > 0;
+}
+
+async function findOrderForUpdate(conn, orderId) {
+  const [rows] = await conn.query(
+    'SELECT id, fulfillment_type, status FROM orders WHERE id = ? LIMIT 1 FOR UPDATE',
+    [orderId]
+  );
+  return rows[0] || null;
+}
+
+async function findItemsForUpdate(conn, orderId) {
+  const [rows] = await conn.query(
+    'SELECT product_variant_id, quantity FROM order_items WHERE order_id = ? FOR UPDATE',
+    [orderId]
+  );
+  return rows;
+}
+
+async function updateStatusInTransaction(conn, orderId, status) {
+  await conn.query('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +112,7 @@ async function markPickupCodeUsed(conn, id) {
 
 async function findItemsByOrderId(orderId) {
   const [rows] = await db.query(
-    'SELECT product_name, size_ml, unit_price_pesewas, quantity FROM order_items WHERE order_id = ?',
+    'SELECT product_variant_id, product_name, size_ml, unit_price_pesewas, quantity FROM order_items WHERE order_id = ?',
     [orderId]
   );
   return rows;
@@ -139,7 +168,11 @@ module.exports = {
   addOrderItem,
   createPickupCode,
   findPickupCode,
+  findPickupCodeForUpdate,
   markPickupCodeUsed,
+  findOrderForUpdate,
+  findItemsForUpdate,
+  updateStatusInTransaction,
   findItemsByOrderId,
   findByIdForUser,
   findByIdForAdmin,

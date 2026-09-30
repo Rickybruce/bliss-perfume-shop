@@ -17,11 +17,14 @@
   ];
   const submitBtn = document.getElementById('submit');
   const statusEl = document.getElementById('status');
+  const customerName = document.getElementById('customer-name');
+  const customerEmail = document.getElementById('customer-email');
+  const customerPhone = document.getElementById('customer-phone');
 
   // Placeholder fees — must match src/services/order.service.js exactly,
   // since these are only shown to the customer; the server recalculates
   // the real total independently and that's what actually gets charged.
-  const FEES_PESEWAS = { ucc_pickup: 0, junction: 500, house_delivery: 1000 };
+  const FEES_PESEWAS = { ucc_pickup: 0n, junction: 500n, house_delivery: 1000n };
 
   function readCart() {
     try {
@@ -33,7 +36,8 @@
   }
 
   function formatGhs(pesewas) {
-    return 'GHS ' + (pesewas / 100).toFixed(2);
+    const amount = BigInt(pesewas);
+    return 'GHS ' + (amount / 100n) + '.' + String(amount % 100n).padStart(2, '0');
   }
 
   function setStatus(message, isError) {
@@ -49,12 +53,13 @@
 
   function renderSummary() {
     summaryList.innerHTML = '';
-    let subtotal = 0;
+    let subtotal = 0n;
     cart.forEach((item) => {
-      subtotal += item.pricePesewas * item.quantity;
+      const lineTotal = BigInt(item.pricePesewas) * BigInt(item.quantity);
+      subtotal += lineTotal;
       const row = document.createElement('li');
       row.className = 'cart-row cart-row-compact';
-      row.innerHTML = `<span>${item.quantity} × ${escapeHtml(item.productName)} (${item.sizeMl}ml)</span><span>${formatGhs(item.pricePesewas * item.quantity)}</span>`;
+      row.innerHTML = `<span>${item.quantity} × ${escapeHtml(item.productName)} (${item.sizeMl}ml)</span><span>${formatGhs(lineTotal)}</span>`;
       summaryList.appendChild(row);
     });
 
@@ -62,7 +67,7 @@
     const fee = FEES_PESEWAS[type];
     summarySubtotal.textContent = formatGhs(subtotal);
     summaryFee.textContent = formatGhs(fee);
-    summaryTotal.textContent = formatGhs(subtotal + fee);
+    summaryTotal.textContent = formatGhs(subtotal + BigInt(fee));
   }
 
   function escapeHtml(str) {
@@ -87,13 +92,24 @@
   // Anyone not logged in gets sent to log in, then straight back here —
   // the cart survives in localStorage across that trip.
   async function requireLogin() {
-    const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
-    if (!res.ok) {
-      window.location.href = 'login.html?next=checkout.html';
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (!res.ok) {
+        window.location.href = 'login.html?next=checkout.html';
+        return false;
+      }
+      const user = await res.json();
+      customerName.textContent = user.username || '—';
+      customerEmail.textContent = user.email || '—';
+      customerPhone.textContent = user.phone || '—';
+      return true;
+    } catch (error) {
+      setStatus('Could not verify your sign-in. Check your connection and try again.', true);
       return false;
     }
-    return true;
   }
+
+  requireLogin();
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -146,7 +162,7 @@
       if (res.ok) {
         localStorage.removeItem(CART_KEY);
         sessionStorage.setItem('lastOrder', JSON.stringify(data));
-        window.location.href = 'order-success.html';
+        window.location.href = 'order-success.html?orderId=' + encodeURIComponent(data.id);
       } else if (res.status === 409) {
         setStatus(data.message, true);
       } else if (data.fields) {

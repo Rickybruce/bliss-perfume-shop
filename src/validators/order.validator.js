@@ -34,6 +34,7 @@ const updateOrderStatusSchema = z.object({
 });
 
 const verifyPickupSchema = z.object({
+  orderId: z.number().int().positive(),
   code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit pickup code.'),
 });
 

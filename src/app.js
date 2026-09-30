@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth.routes');
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
 const adminRoutes = require('./routes/admin.routes');
+const pickupRoutes = require('./routes/pickup.routes');
 const errorHandler = require('./middleware/error-handler.middleware');
 
 checkEnv();
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/pickups', pickupRoutes);
 
 // Serves everything in public/, e.g. http://localhost:3000/signup.html
 app.use(express.static(path.join(__dirname, '..', 'public')));
