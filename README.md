@@ -47,18 +47,21 @@ deliberately no shipping-carrier integration — don't add one.
 | Area | Status |
 |---|---|
 | Database schema (`db/schema.sql`) | Done — all 9 tables |
-| Auth backend (register, verify phone, login, logout, `/me`) | Done, tested |
-| Sign-up page | Done, wired to the real API |
-| Login page | Done, wired to the real API |
-| Phone verification page | Done, wired to the real API |
-| Perfume intro animation (login/sign-up) | In progress — see `public/css/intro.css`, `public/js/intro.js`. Currently an SVG box-unboxing animation; the goal is to replace it with a short cinematic video reveal (like a 3D product-reveal ad) that blurs into the login form. Video asset not yet produced. |
-| Home / shop page (catalog, filters) | **Not started** |
-| Product detail page | **Not started** |
-| Cart | **Not started** |
-| Checkout (fulfillment choice + payment) | **Not started** |
-| Admin (product CRUD, order management, pickup codes) | **Not started** |
-| Paystack integration | **Not started** |
-| Real SMS provider for OTP | **Not started** — codes currently print to the server console only |
+| Auth (register, phone verify, login, logout, `/me`) | Done, tested |
+| Sign-up, login, phone verification pages | Done |
+| Shop grid with filters (`index.html`), product page | Done |
+| Cart (`cart.html`, client-side in localStorage) | Done |
+| Checkout, order success, my orders, order detail | Done — server recalculates prices and stock |
+| Admin dashboard, products table, product form (create + edit sizes/price/stock/images) | Done |
+| Admin orders list, order detail + status updates, campus pickup code screen | Done |
+| Delivery & returns, contact, privacy, forgot-password, 404 pages | Done (contact phone number is a placeholder to fill in) |
+| Perfume intro animation (login/sign-up) | In progress — SVG version exists; goal is a short cinematic video reveal that blurs into the form |
+| Product images | Hosted links (Cloudinary). Local `public/images/` is being retired — see `db/seeds/apply-image-urls.js` |
+| Paystack integration | **Not started** — orders are created as `pending`; payment is arranged manually for now |
+| Real SMS provider for OTP | **Not started** — codes print to the server console only |
+| Cloudinary image *upload* from the admin form | **Not started** — admin pastes an image link instead |
+| Email + online password reset | **Not started** — `forgot-password.html` tells users to contact the shop |
+| Deployment (`.github/workflows/deploy.yml`, `docs/`) | **Not started** |
 
 ## Project layout
 
@@ -79,7 +82,7 @@ src/
   utils/                   Small stateless helpers (phone.js, tokens.js, app-error.js)
 public/
   *.html, css/, js/        Plain frontend, no build step
-  admin/                   Reserved for the admin UI — not built yet
+  admin/                   Admin UI (dashboard, products, orders, pickup). Scripts in admin/js/
 ```
 
 ## Conventions — follow these exactly
@@ -128,35 +131,19 @@ public/
     `.middleware.js`, validators in `.validator.js` — match the
     existing pattern exactly so files sort predictably.
 
-## What's left to build (see "Status" table)
+## What's left to build
 
-If you're building the **home/shop page or product detail page**:
-- Products need `is_published = 1` to show.
-- Fetch product + variants + images from a new `product.repository.js`,
-  following the same pattern as `user.repository.js`.
-- Filters: scent family, concentration, price range (all on `products`/
-  `product_variants`).
-- No product endpoints exist yet — you'll need
-  `GET /api/products` and `GET /api/products/:id`, following the
-  routes → controller → repository pattern already established for auth.
-
-If you're building **cart/checkout**: cart can be client-side only
-(localStorage) until checkout; checkout must recalculate everything
-server-side (see rule 4 above) and create rows in `orders` and
-`order_items`. Fulfillment type selection (`junction` / `house_delivery`
-/ `ucc_pickup`) happens at checkout.
-
-If you're building the **admin pages**: gate everything behind
-`requireAuth` + an admin role check. Needed: product create/edit form
-(with image upload — Cloudinary, not local disk), a stock/price table,
-an orders list with status updates, and a pickup-code entry screen for
-UCC campus pickup.
+- Paystack (test keys first), a real SMS provider, Cloudinary upload, and email for password reset. Ask Rick which provider and which keys before wiring any of them.
+- Deployment and `docs/`.
+- Do not re-run `db/seeds/products.seed.js` on a live database: it resets stock to the seed numbers. Use the admin pages to change stock and prices.
+- Inline `<script>` blocks and inline `on*=` handlers are blocked by the helmet CSP. Put JavaScript in files under `public/js/` or `public/admin/js/`.
 
 ## Running it locally
 
 ```bash
 npm install
 mysql -u perfume_app -p perfume_shop < db/schema.sql
+node db/seeds/products.seed.js   # optional demo products
 npm run dev
 ```
 

@@ -226,6 +226,96 @@ async function addImage({ product_id, url, position = 0 }) {
   return result.insertId;
 }
 
+/**
+ * Fetch one product for the admin edit form: published or not, with every
+ * variant and image.
+ */
+async function findByIdAdmin(id) {
+  const [rows] = await db.query(
+    `SELECT id, name, brand, description, scent_family, top_notes, middle_notes,
+            base_notes, concentration, is_published
+     FROM products WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  if (!rows.length) return null;
+
+  const [variants] = await db.query(
+    'SELECT id, size_ml, price_pesewas, stock, sku FROM product_variants WHERE product_id = ? ORDER BY size_ml ASC',
+    [id]
+  );
+  const [images] = await db.query(
+    'SELECT id, url, position FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC',
+    [id]
+  );
+  return { ...rows[0], variants, images };
+}
+
+const PRODUCT_COLUMNS = [
+  'name', 'brand', 'description', 'scent_family',
+  'top_notes', 'middle_notes', 'base_notes', 'concentration', 'is_published',
+];
+
+/**
+ * Update only the product fields that were sent. Column names come from the
+ * fixed list above, never from the request, so this stays injection-safe.
+ * Returns false if no product has that id.
+ */
+async function update(id, fields) {
+  const sets = [];
+  const params = [];
+  for (const col of PRODUCT_COLUMNS) {
+    if (fields[col] === undefined) continue;
+    let value = fields[col];
+    if (col === 'is_published') value = value ? 1 : 0;
+    else if (value === '') value = col === 'name' ? value : null;
+    sets.push(`${col} = ?`);
+    params.push(value);
+  }
+  if (!sets.length) return true;
+  params.push(id);
+  const [result] = await db.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, params);
+  return result.affectedRows > 0;
+}
+
+const VARIANT_COLUMNS = ['size_ml', 'price_pesewas', 'stock', 'sku'];
+
+async function updateVariant(variantId, fields) {
+  const sets = [];
+  const params = [];
+  for (const col of VARIANT_COLUMNS) {
+    if (fields[col] === undefined) continue;
+    sets.push(`${col} = ?`);
+    params.push(col === 'sku' && fields[col] === '' ? null : fields[col]);
+  }
+  if (!sets.length) return true;
+  params.push(variantId);
+  const [result] = await db.query(`UPDATE product_variants SET ${sets.join(', ')} WHERE id = ?`, params);
+  return result.affectedRows > 0;
+}
+
+async function deleteVariant(variantId) {
+  const [result] = await db.query('DELETE FROM product_variants WHERE id = ?', [variantId]);
+  return result.affectedRows > 0;
+}
+
+async function productExists(id) {
+  const [rows] = await db.query('SELECT id FROM products WHERE id = ? LIMIT 1', [id]);
+  return rows.length > 0;
+}
+
+async function nextImagePosition(productId) {
+  const [rows] = await db.query(
+    'SELECT COALESCE(MAX(position) + 1, 0) AS next FROM product_images WHERE product_id = ?',
+    [productId]
+  );
+  return rows[0].next;
+}
+
+async function deleteImage(imageId) {
+  const [result] = await db.query('DELETE FROM product_images WHERE id = ?', [imageId]);
+  return result.affectedRows > 0;
+}
+
 module.exports = {
   findPublished,
   findById,
@@ -235,4 +325,11 @@ module.exports = {
   create,
   addVariant,
   addImage,
+  findByIdAdmin,
+  update,
+  updateVariant,
+  deleteVariant,
+  productExists,
+  nextImagePosition,
+  deleteImage,
 };

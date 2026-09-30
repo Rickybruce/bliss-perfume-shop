@@ -17,6 +17,7 @@
       <a href="index.html" class="active">Dashboard</a>
       <a href="products.html">Products</a>
       <a href="orders.html">Orders</a>
+      <a href="pickup.html">Pickup</a>
       <a href="/index.html" target="_blank">View Shop ↗</a>
       <div class="admin-user">
         <span id="admin-username">Admin</span>
@@ -49,29 +50,29 @@
         <h3>Total Bottles in Stock</h3>
         <p class="stat-value" id="stat-stock">—</p>
       </div>
+      <div class="stat-card">
+        <h3>Sold-out Products</h3>
+        <p class="stat-value" id="stat-soldout">—</p>
+      </div>
+      <div class="stat-card">
+        <h3>Orders to Handle</h3>
+        <p class="stat-value" id="stat-orders-open">—</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Orders</h3>
+        <p class="stat-value" id="stat-orders-total">—</p>
+      </div>
     </div>
 
     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-      <a href="products.html" class="btn btn-secondary">Manage Products Table →</a>
+      <a href="products.html" class="btn btn-secondary">Manage Products →</a>
+      <a href="orders.html" class="btn btn-secondary">View Orders →</a>
+      <a href="pickup.html" class="btn btn-secondary">Verify Pickup Code →</a>
       <a href="/index.html" target="_blank" class="btn btn-secondary">Open Customer Storefront ↗</a>
     </div>
   </main>
 
   <script src="js/admin-common.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const res = await fetch('/api/admin/products', { credentials: 'same-origin' });
-        if (res.ok) {
-          const { products } = await res.json();
-          document.getElementById('stat-products').textContent = products.length;
-          const published = products.filter(p => p.is_published).length;
-          document.getElementById('stat-published').textContent = published;
-          const totalStock = products.reduce((acc, p) => acc + (Number(p.total_stock) || 0), 0);
-          document.getElementById('stat-stock').textContent = totalStock;
-        }
-      } catch (_) {}
-    });
-  </script>
+  <script src="js/admin-dashboard.js"></script>
 </body>
 </html>
