@@ -19,7 +19,18 @@ checkEnv();
 
 const app = express();
 
-app.use(helmet());
+// Default helmet CSP only allows images from this server. Product images are
+// hosted on Cloudinary, so that host is allowed for <img> as well.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'img-src': ["'self'", 'data:', 'https://res.cloudinary.com'],
+      },
+    },
+  })
+);
 app.use(compression());
 
 // Later: mount the Paystack webhook route HERE, before express.json().
@@ -47,6 +58,14 @@ app.use('/api/admin/pickups', pickupRoutes);
 
 // Serves everything in public/, e.g. http://localhost:3000/signup.html
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Anything that reaches here matched no route or static file.
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'Not found.' });
+});
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, '..', 'public', '404.html'));
+});
 
 // Must be registered after every route above.
 app.use(errorHandler);

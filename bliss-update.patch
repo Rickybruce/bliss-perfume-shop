@@ -1,0 +1,2067 @@
+diff --git a/.env.example b/.env.example
+index 9cc65d1..2d55b26 100644
+--- a/.env.example
++++ b/.env.example
+@@ -4,6 +4,7 @@ PORT=3000
+ DB_HOST=localhost
+ DB_PORT=3306
+ DB_USER=perfume_app
++DB_NAME=perfume_shop
+ DB_PASSWORD=
+ 
+ JWT_SECRET=
+diff --git a/README.md b/README.md
+index e0621f4..b8827c1 100644
+--- a/README.md
++++ b/README.md
+@@ -47,18 +47,21 @@ deliberately no shipping-carrier integration — don't add one.
+ | Area | Status |
+ |---|---|
+ | Database schema (`db/schema.sql`) | Done — all 9 tables |
+-| Auth backend (register, verify phone, login, logout, `/me`) | Done, tested |
+-| Sign-up page | Done, wired to the real API |
+-| Login page | Done, wired to the real API |
+-| Phone verification page | Done, wired to the real API |
+-| Perfume intro animation (login/sign-up) | In progress — see `public/css/intro.css`, `public/js/intro.js`. Currently an SVG box-unboxing animation; the goal is to replace it with a short cinematic video reveal (like a 3D product-reveal ad) that blurs into the login form. Video asset not yet produced. |
+-| Home / shop page (catalog, filters) | **Not started** |
+-| Product detail page | **Not started** |
+-| Cart | **Not started** |
+-| Checkout (fulfillment choice + payment) | **Not started** |
+-| Admin (product CRUD, order management, pickup codes) | **Not started** |
+-| Paystack integration | **Not started** |
+-| Real SMS provider for OTP | **Not started** — codes currently print to the server console only |
++| Auth (register, phone verify, login, logout, `/me`) | Done, tested |
++| Sign-up, login, phone verification pages | Done |
++| Shop grid with filters (`index.html`), product page | Done |
++| Cart (`cart.html`, client-side in localStorage) | Done |
++| Checkout, order success, my orders, order detail | Done — server recalculates prices and stock |
++| Admin dashboard, products table, product form (create + edit sizes/price/stock/images) | Done |
++| Admin orders list, order detail + status updates, campus pickup code screen | Done |
++| Delivery & returns, contact, privacy, forgot-password, 404 pages | Done (contact phone number is a placeholder to fill in) |
++| Perfume intro animation (login/sign-up) | In progress — SVG version exists; goal is a short cinematic video reveal that blurs into the form |
++| Product images | Hosted links (Cloudinary). Local `public/images/` is being retired — see `db/seeds/apply-image-urls.js` |
++| Paystack integration | **Not started** — orders are created as `pending`; payment is arranged manually for now |
++| Real SMS provider for OTP | **Not started** — codes print to the server console only |
++| Cloudinary image *upload* from the admin form | **Not started** — admin pastes an image link instead |
++| Email + online password reset | **Not started** — `forgot-password.html` tells users to contact the shop |
++| Deployment (`.github/workflows/deploy.yml`, `docs/`) | **Not started** |
+ 
+ ## Project layout
+ 
+@@ -79,7 +82,7 @@ src/
+   utils/                   Small stateless helpers (phone.js, tokens.js, app-error.js)
+ public/
+   *.html, css/, js/        Plain frontend, no build step
+-  admin/                   Reserved for the admin UI — not built yet
++  admin/                   Admin UI (dashboard, products, orders, pickup). Scripts in admin/js/
+ ```
+ 
+ ## Conventions — follow these exactly
+@@ -128,35 +131,19 @@ public/
+     `.middleware.js`, validators in `.validator.js` — match the
+     existing pattern exactly so files sort predictably.
+ 
+-## What's left to build (see "Status" table)
+-
+-If you're building the **home/shop page or product detail page**:
+-- Products need `is_published = 1` to show.
+-- Fetch product + variants + images from a new `product.repository.js`,
+-  following the same pattern as `user.repository.js`.
+-- Filters: scent family, concentration, price range (all on `products`/
+-  `product_variants`).
+-- No product endpoints exist yet — you'll need
+-  `GET /api/products` and `GET /api/products/:id`, following the
+-  routes → controller → repository pattern already established for auth.
+-
+-If you're building **cart/checkout**: cart can be client-side only
+-(localStorage) until checkout; checkout must recalculate everything
+-server-side (see rule 4 above) and create rows in `orders` and
+-`order_items`. Fulfillment type selection (`junction` / `house_delivery`
+-/ `ucc_pickup`) happens at checkout.
+-
+-If you're building the **admin pages**: gate everything behind
+-`requireAuth` + an admin role check. Needed: product create/edit form
+-(with image upload — Cloudinary, not local disk), a stock/price table,
+-an orders list with status updates, and a pickup-code entry screen for
+-UCC campus pickup.
++## What's left to build
++
++- Paystack (test keys first), a real SMS provider, Cloudinary upload, and email for password reset. Ask Rick which provider and which keys before wiring any of them.
++- Deployment and `docs/`.
++- Do not re-run `db/seeds/products.seed.js` on a live database: it resets stock to the seed numbers. Use the admin pages to change stock and prices.
++- Inline `<script>` blocks and inline `on*=` handlers are blocked by the helmet CSP. Put JavaScript in files under `public/js/` or `public/admin/js/`.
+ 
+ ## Running it locally
+ 
+ ```bash
+ npm install
+ mysql -u perfume_app -p perfume_shop < db/schema.sql
++node db/seeds/products.seed.js   # optional demo products
+ npm run dev
+ ```
+ 
+diff --git a/db/seeds/apply-image-urls.js b/db/seeds/apply-image-urls.js
+new file mode 100644
+index 0000000..f76be52
+--- /dev/null
++++ b/db/seeds/apply-image-urls.js
+@@ -0,0 +1,44 @@
++// One-off: swaps the local /images/... paths in product_images for hosted
++// links (Cloudinary etc.), using the map in image-urls.json.
++//
++//   1. Paste each hosted link as the value next to its old path in image-urls.json
++//   2. node db/seeds/apply-image-urls.js
++//
++// Safe to re-run. Entries left empty are skipped. Do NOT re-run
++// products.seed.js on a live database for this: it would add a second image
++// per product and reset stock back to the seed numbers.
++
++require('dotenv').config();
++
++const db = require('../../src/config/db');
++const map = require('./image-urls.json');
++
++async function main() {
++  let updated = 0;
++  const skipped = [];
++
++  for (const [oldPath, newUrl] of Object.entries(map)) {
++    if (!newUrl) {
++      skipped.push(oldPath);
++      continue;
++    }
++    if (!/^https:\/\//i.test(newUrl) || newUrl.length > 300) {
++      console.error(`Skipped (must be an https link under 300 chars): ${oldPath}`);
++      skipped.push(oldPath);
++      continue;
++    }
++    const [result] = await db.query('UPDATE product_images SET url = ? WHERE url = ?', [newUrl, oldPath]);
++    console.log(`${result.affectedRows ? 'Updated' : 'No match for'}: ${oldPath}`);
++    updated += result.affectedRows;
++  }
++
++  const [left] = await db.query("SELECT COUNT(*) AS n FROM product_images WHERE url LIKE '/images/%'");
++  console.log(`\nRows updated: ${updated}. Rows still pointing at /images/: ${left[0].n}.`);
++  if (skipped.length) console.log(`Left empty in image-urls.json: ${skipped.length}`);
++  await db.end();
++}
++
++main().catch((err) => {
++  console.error('Failed:', err.message);
++  process.exit(1);
++});
+diff --git a/db/seeds/image-urls.json b/db/seeds/image-urls.json
+new file mode 100644
+index 0000000..57230c8
+--- /dev/null
++++ b/db/seeds/image-urls.json
+@@ -0,0 +1,14 @@
++{
++  "/images/Angham by Lattafa.webp": "",
++  "/images/Brown Orchid (Gold Edition) by Fragrance World.png": "",
++  "/images/Dolores Pour Femme.jpg": "",
++  "/images/Hayaati Belle.jpg": "",
++  "/images/Hayaati by Lattafa.jpg": "",
++  "/images/Her Confession by Lattafa.jpg": "",
++  "/images/Her Confession by Lattafa 2.webp": "",
++  "/images/Her Confession by Lattafa 3.webp": "",
++  "/images/Jungle Vibe by Rayhaan.jfif": "",
++  "/images/Lattafa Yara Elxir.webp": "",
++  "/images/Rose Seduction Secret Obsession.png": "",
++  "/images/Vanille Bouquet.webp": ""
++}
+diff --git a/public/404.html b/public/404.html
+index e69de29..79f8fe3 100644
+--- a/public/404.html
++++ b/public/404.html
+@@ -0,0 +1,34 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Page not found — Bliss Perfumes</title>
++  <link rel="stylesheet" href="/css/shop.css">
++  <link rel="stylesheet" href="/css/base.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="/index.html">Bliss Perfumes</a>
++    <nav>
++      <a href="/index.html">Shop</a>
++      <a class="cart-link" href="/cart.html">Cart</a>
++    </nav>
++  </header>
++
++  <main class="page-main">
++    <h1>Page not found</h1>
++    <p class="page-lede">That page does not exist or has moved.</p>
++    <a class="page-btn" href="/index.html">Back to shop</a>
++  </main>
++
++  <footer class="site-footer">
++    <a href="/delivery-returns.html">Delivery &amp; returns</a>
++    <a href="/contact.html">Contact</a>
++    <a href="/privacy.html">Privacy</a>
++  </footer>
++
++</body>
++</html>
+diff --git a/public/account.html b/public/account.html
+index 81046d5..ba185e6 100644
+--- a/public/account.html
++++ b/public/account.html
+@@ -10,7 +10,7 @@
+ <body>
+ 
+   <header class="site-header">
+-    <a class="brand" href="index.html">Shop name</a>
++    <a class="brand" href="index.html">Bliss Perfumes</a>
+     <nav>
+       <span id="nav-account"></span>
+       <a class="cart-link" href="cart.html">Cart</a>
+diff --git a/public/admin/index.html b/public/admin/index.html
+index 89eca9e..e5dfff1 100644
+--- a/public/admin/index.html
++++ b/public/admin/index.html
+@@ -17,6 +17,7 @@
+       <a href="index.html" class="active">Dashboard</a>
+       <a href="products.html">Products</a>
+       <a href="orders.html">Orders</a>
++      <a href="pickup.html">Pickup</a>
+       <a href="/index.html" target="_blank">View Shop ↗</a>
+       <div class="admin-user">
+         <span id="admin-username">Admin</span>
+@@ -49,29 +50,29 @@
+         <h3>Total Bottles in Stock</h3>
+         <p class="stat-value" id="stat-stock">—</p>
+       </div>
++      <div class="stat-card">
++        <h3>Sold-out Products</h3>
++        <p class="stat-value" id="stat-soldout">—</p>
++      </div>
++      <div class="stat-card">
++        <h3>Orders to Handle</h3>
++        <p class="stat-value" id="stat-orders-open">—</p>
++      </div>
++      <div class="stat-card">
++        <h3>Total Orders</h3>
++        <p class="stat-value" id="stat-orders-total">—</p>
++      </div>
+     </div>
+ 
+     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+-      <a href="products.html" class="btn btn-secondary">Manage Products Table →</a>
++      <a href="products.html" class="btn btn-secondary">Manage Products →</a>
++      <a href="orders.html" class="btn btn-secondary">View Orders →</a>
++      <a href="pickup.html" class="btn btn-secondary">Verify Pickup Code →</a>
+       <a href="/index.html" target="_blank" class="btn btn-secondary">Open Customer Storefront ↗</a>
+     </div>
+   </main>
+ 
+   <script src="js/admin-common.js"></script>
+-  <script>
+-    document.addEventListener('DOMContentLoaded', async () => {
+-      try {
+-        const res = await fetch('/api/admin/products', { credentials: 'same-origin' });
+-        if (res.ok) {
+-          const { products } = await res.json();
+-          document.getElementById('stat-products').textContent = products.length;
+-          const published = products.filter(p => p.is_published).length;
+-          document.getElementById('stat-published').textContent = published;
+-          const totalStock = products.reduce((acc, p) => acc + (Number(p.total_stock) || 0), 0);
+-          document.getElementById('stat-stock').textContent = totalStock;
+-        }
+-      } catch (_) {}
+-    });
+-  </script>
++  <script src="js/admin-dashboard.js"></script>
+ </body>
+ </html>
+diff --git a/public/admin/js/admin-dashboard.js b/public/admin/js/admin-dashboard.js
+index e69de29..30d4b59 100644
+--- a/public/admin/js/admin-dashboard.js
++++ b/public/admin/js/admin-dashboard.js
+@@ -0,0 +1,37 @@
++(() => {
++  'use strict';
++
++  // Orders that still need the shop owner to do something.
++  const OPEN_STATUSES = ['pending', 'paid', 'packed', 'ready', 'shipped'];
++
++  function setText(id, value) {
++    const el = document.getElementById(id);
++    if (el) el.textContent = value;
++  }
++
++  async function getJson(url) {
++    const res = await fetch(url, { credentials: 'same-origin' });
++    if (!res.ok) throw new Error('HTTP ' + res.status);
++    return res.json();
++  }
++
++  async function loadProductStats() {
++    const { products } = await getJson('/api/admin/products');
++    setText('stat-products', products.length);
++    setText('stat-published', products.filter((p) => p.is_published).length);
++    setText('stat-stock', products.reduce((sum, p) => sum + (Number(p.total_stock) || 0), 0));
++    setText('stat-soldout', products.filter((p) => Number(p.total_stock) === 0).length);
++  }
++
++  async function loadOrderStats() {
++    const { orders } = await getJson('/api/admin/orders');
++    setText('stat-orders-total', orders.length);
++    setText('stat-orders-open', orders.filter((o) => OPEN_STATUSES.includes(o.status)).length);
++  }
++
++  // Each card loads on its own, so one failing request doesn't blank the rest.
++  document.addEventListener('DOMContentLoaded', () => {
++    loadProductStats().catch(() => {});
++    loadOrderStats().catch(() => {});
++  });
++})();
+diff --git a/public/admin/js/admin-product-form.js b/public/admin/js/admin-product-form.js
+index 89f2d02..95f7e37 100644
+--- a/public/admin/js/admin-product-form.js
++++ b/public/admin/js/admin-product-form.js
+@@ -1,109 +1,322 @@
++/**
++ * Product form. Two modes:
++ *   product-form.html          -> create a product with its first size and image
++ *   product-form.html?id=12    -> edit that product, its sizes (price/stock) and images
++ */
+ (() => {
+   'use strict';
+ 
+-  const form = document.getElementById('product-form');
+-  const submitBtn = document.getElementById('submit-btn');
+-  const statusMsg = document.getElementById('status-msg');
+-
+-  function setStatus(message, type) {
+-    statusMsg.textContent = message;
+-    statusMsg.className = 'status-msg';
+-    if (type === 'error') statusMsg.classList.add('is-error');
+-    if (type === 'success') statusMsg.classList.add('is-success');
+-  }
+-
+-  form.addEventListener('submit', async (e) => {
+-    e.preventDefault();
+-    setStatus('', '');
+-
+-    const name = form.name.value.trim();
+-    const brand = form.brand.value.trim();
+-    const concentration = form.concentration.value;
+-    const scent_family = form.scent_family.value.trim().toLowerCase();
+-    const description = form.description.value.trim();
+-
+-    const top_notes = form.top_notes.value.trim();
+-    const middle_notes = form.middle_notes.value.trim();
+-    const base_notes = form.base_notes.value.trim();
+-
+-    const size_ml = parseInt(form.size_ml.value, 10);
+-    const priceGhs = parseFloat(form.price_ghs.value);
+-    const stock = parseInt(form.stock.value, 10);
+-    const sku = form.sku.value.trim();
+-    const image_url = form.image_url.value.trim();
+-    const is_published = form.is_published.checked;
+-
+-    if (!name) {
+-      setStatus('Product name is required.', 'error');
+-      form.name.focus();
+-      return;
++  const productId = new URLSearchParams(window.location.search).get('id');
++  const isEdit = /^\d+$/.test(productId || '');
++
++  const $ = (id) => document.getElementById(id);
++  const form = $('product-form');
++  const submitBtn = $('submit-btn');
++  const statusMsg = $('status-msg');
++
++  // ── Helpers ──────────────────────────────────────────────────────────
++  function setMsg(el, message, type) {
++    el.textContent = message;
++    el.className = 'status-msg' + (type ? ' is-' + type : '');
++  }
++
++  // "350.50" -> 35050. Integer maths only, no float rounding (money convention).
++  function ghsToPesewas(text) {
++    const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(String(text).trim());
++    if (!match) return null;
++    const pesewas = Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0') || 0);
++    return pesewas > 0 ? pesewas : null;
++  }
++
++  function pesewasToGhs(pesewas) {
++    const value = Number(pesewas) || 0;
++    return Math.floor(value / 100) + '.' + String(value % 100).padStart(2, '0');
++  }
++
++  async function api(method, url, body) {
++    const res = await fetch(url, {
++      method,
++      headers: body ? { 'Content-Type': 'application/json' } : undefined,
++      credentials: 'same-origin',
++      body: body ? JSON.stringify(body) : undefined,
++    });
++    const data = await res.json().catch(() => ({}));
++    if (!res.ok) {
++      const firstField = data.fields && Object.values(data.fields)[0];
++      throw new Error(firstField || data.message || 'Something went wrong.');
+     }
++    return data;
++  }
++
++  function el(tag, props = {}, children = []) {
++    const node = document.createElement(tag);
++    Object.assign(node, props);
++    for (const child of children) node.append(child);
++    return node;
++  }
+ 
+-    if (isNaN(size_ml) || size_ml <= 0) {
+-      setStatus('Please enter a valid bottle size in ml.', 'error');
+-      form.size_ml.focus();
++  function textFields() {
++    return {
++      name: $('name').value.trim(),
++      brand: $('brand').value.trim(),
++      concentration: $('concentration').value,
++      scent_family: $('scent_family').value.trim().toLowerCase(),
++      description: $('description').value.trim(),
++      top_notes: $('top_notes').value.trim(),
++      middle_notes: $('middle_notes').value.trim(),
++      base_notes: $('base_notes').value.trim(),
++      is_published: $('is_published').checked,
++    };
++  }
++
++  // ── Create mode ──────────────────────────────────────────────────────
++  async function createProduct() {
++    const fields = textFields();
++    if (!fields.name) {
++      setMsg(statusMsg, 'Product name is required.', 'error');
++      $('name').focus();
+       return;
+     }
+ 
+-    if (isNaN(priceGhs) || priceGhs <= 0) {
+-      setStatus('Please enter a valid price in GHS.', 'error');
+-      form.price_ghs.focus();
++    const sizeMl = parseInt($('size_ml').value, 10);
++    if (!Number.isInteger(sizeMl) || sizeMl <= 0) {
++      setMsg(statusMsg, 'Enter a valid bottle size in ml.', 'error');
++      $('size_ml').focus();
+       return;
+     }
+ 
+-    if (isNaN(stock) || stock < 0) {
+-      setStatus('Stock must be 0 or higher.', 'error');
+-      form.stock.focus();
++    const pricePesewas = ghsToPesewas($('price_ghs').value);
++    if (pricePesewas === null) {
++      setMsg(statusMsg, 'Enter a valid price in GHS, like 350 or 350.50.', 'error');
++      $('price_ghs').focus();
+       return;
+     }
+ 
+-    // Money convention: integer pesewas (1 GHS = 100 pesewas)
+-    const price_pesewas = Math.round(priceGhs * 100);
++    const stock = parseInt($('stock').value, 10);
++    if (!Number.isInteger(stock) || stock < 0) {
++      setMsg(statusMsg, 'Stock must be 0 or higher.', 'error');
++      $('stock').focus();
++      return;
++    }
+ 
+     const payload = {
+-      name,
+-      brand: brand || undefined,
+-      concentration: concentration || undefined,
+-      scent_family: scent_family || undefined,
+-      description: description || undefined,
+-      top_notes: top_notes || undefined,
+-      middle_notes: middle_notes || undefined,
+-      base_notes: base_notes || undefined,
+-      size_ml,
+-      price_pesewas,
++      ...fields,
++      size_ml: sizeMl,
++      price_pesewas: pricePesewas,
+       stock,
+-      sku: sku || undefined,
+-      image_url: image_url || undefined,
+-      is_published,
++      sku: $('sku').value.trim(),
++      image_url: $('image_url').value.trim(),
+     };
+ 
+-    submitBtn.disabled = true;
+-    submitBtn.textContent = 'Saving...';
++    const data = await api('POST', '/api/admin/products', payload);
++    setMsg(statusMsg, 'Product saved. Opening it so you can add more sizes and images…', 'success');
++    setTimeout(() => {
++      window.location.href = 'product-form.html?id=' + data.productId;
++    }, 900);
++  }
++
++  // ── Edit mode: product fields ────────────────────────────────────────
++  function fillForm(product) {
++    $('name').value = product.name || '';
++    $('brand').value = product.brand || '';
++    $('concentration').value = product.concentration || 'EDP';
++    $('scent_family').value = product.scent_family || '';
++    $('description').value = product.description || '';
++    $('top_notes').value = product.top_notes || '';
++    $('middle_notes').value = product.middle_notes || '';
++    $('base_notes').value = product.base_notes || '';
++    $('is_published').checked = Boolean(product.is_published);
++  }
++
++  async function saveProduct() {
++    const fields = textFields();
++    if (!fields.name) {
++      setMsg(statusMsg, 'Product name is required.', 'error');
++      $('name').focus();
++      return;
++    }
++    await api('PATCH', '/api/admin/products/' + productId, fields);
++    setMsg(statusMsg, 'Changes saved.', 'success');
++  }
++
++  // ── Edit mode: sizes ─────────────────────────────────────────────────
++  function variantRow(v) {
++    const price = el('input', { type: 'number', min: '0.01', step: '0.01', value: pesewasToGhs(v.price_pesewas) });
++    const stock = el('input', { type: 'number', min: '0', value: v.stock });
++    const sku = el('input', { type: 'text', value: v.sku || '', placeholder: 'SKU' });
++    const msg = el('span', { className: 'status-msg' });
++    msg.style.margin = '0';
++
++    const save = el('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Save' });
++    save.addEventListener('click', async () => {
++      const pricePesewas = ghsToPesewas(price.value);
++      const stockValue = parseInt(stock.value, 10);
++      if (pricePesewas === null) return setMsg(msg, 'Invalid price.', 'error');
++      if (!Number.isInteger(stockValue) || stockValue < 0) return setMsg(msg, 'Invalid stock.', 'error');
++      save.disabled = true;
++      try {
++        await api('PATCH', '/api/admin/variants/' + v.id, {
++          price_pesewas: pricePesewas,
++          stock: stockValue,
++          sku: sku.value.trim(),
++        });
++        setMsg(msg, 'Saved.', 'success');
++      } catch (err) {
++        setMsg(msg, err.message, 'error');
++      } finally {
++        save.disabled = false;
++      }
++    });
++
++    const del = el('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Delete' });
++    del.addEventListener('click', async () => {
++      if (!window.confirm('Delete the ' + v.size_ml + 'ml size?')) return;
++      try {
++        await api('DELETE', '/api/admin/variants/' + v.id);
++        await loadProduct();
++      } catch (err) {
++        setMsg(msg, err.message, 'error');
++      }
++    });
++
++    const cell = (label, input) => {
++      const group = el('div', { className: 'form-group' }, [el('label', { textContent: label }), input]);
++      return group;
++    };
++    const grid = el('div', { className: 'form-grid' }, [
++      cell(v.size_ml + 'ml — Price (GHS)', price),
++      cell('Stock', stock),
++      cell('SKU', sku),
++      el('div', { className: 'form-group' }, [el('label', { textContent: '\u00a0' }), el('div', {}, [save, ' ', del])]),
++    ]);
++    grid.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
++    const wrap = el('div', {}, [grid, msg]);
++    wrap.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--border);';
++    return wrap;
++  }
++
++  function renderVariants(variants) {
++    const list = $('variant-list');
++    list.replaceChildren();
++    if (!variants.length) {
++      list.append(el('p', { textContent: 'No sizes yet. Customers cannot buy this product until you add one.' }));
++      return;
++    }
++    variants.forEach((v) => list.append(variantRow(v)));
++  }
++
++  async function addVariant() {
++    const status = $('variant-status');
++    const sizeMl = parseInt($('new-size-ml').value, 10);
++    const pricePesewas = ghsToPesewas($('new-size-price').value);
++    const stock = parseInt($('new-size-stock').value, 10);
++    if (!Number.isInteger(sizeMl) || sizeMl <= 0) return setMsg(status, 'Enter a valid size in ml.', 'error');
++    if (pricePesewas === null) return setMsg(status, 'Enter a valid price in GHS.', 'error');
++    if (!Number.isInteger(stock) || stock < 0) return setMsg(status, 'Stock must be 0 or higher.', 'error');
+ 
+     try {
+-      const res = await fetch('/api/admin/products', {
+-        method: 'POST',
+-        headers: { 'Content-Type': 'application/json' },
+-        credentials: 'same-origin',
+-        body: JSON.stringify(payload),
++      await api('POST', '/api/admin/products/' + productId + '/variants', {
++        size_ml: sizeMl,
++        price_pesewas: pricePesewas,
++        stock,
++        sku: $('new-size-sku').value.trim(),
++      });
++      $('new-size-ml').value = '';
++      $('new-size-price').value = '';
++      $('new-size-stock').value = '0';
++      $('new-size-sku').value = '';
++      setMsg(status, 'Size added.', 'success');
++      await loadProduct();
++    } catch (err) {
++      setMsg(status, err.message, 'error');
++    }
++  }
++
++  // ── Edit mode: images ────────────────────────────────────────────────
++  function renderImages(images) {
++    const list = $('image-list');
++    list.replaceChildren();
++    if (!images.length) {
++      list.append(el('p', { textContent: 'No images yet.' }));
++      return;
++    }
++    images.forEach((image) => {
++      const thumb = el('img', { src: image.url, alt: '', className: 'thumb-cell' });
++      const link = el('span', { textContent: image.url });
++      link.style.cssText = 'flex:1;min-width:0;overflow-wrap:anywhere;font-size:0.85rem;color:var(--muted);';
++      const remove = el('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Remove' });
++      remove.addEventListener('click', async () => {
++        try {
++          await api('DELETE', '/api/admin/images/' + image.id);
++          await loadProduct();
++        } catch (err) {
++          setMsg($('image-status'), err.message, 'error');
++        }
+       });
++      const row = el('div', {}, [thumb, link, remove]);
++      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);';
++      list.append(row);
++    });
++  }
+ 
+-      const data = await res.json().catch(() => ({}));
+-
+-      if (res.ok) {
+-        setStatus(`Product saved successfully! Redirecting to products list...`, 'success');
+-        setTimeout(() => {
+-          window.location.href = 'products.html';
+-        }, 1200);
+-      } else {
+-        setStatus(data.message || 'Failed to save product. Check the details and try again.', 'error');
+-        submitBtn.disabled = false;
+-        submitBtn.textContent = 'Save Product';
+-      }
++  async function addImage() {
++    const status = $('image-status');
++    const url = $('new-image-url').value.trim();
++    if (!url) return setMsg(status, 'Paste an image link first.', 'error');
++    try {
++      await api('POST', '/api/admin/products/' + productId + '/images', { url });
++      $('new-image-url').value = '';
++      setMsg(status, 'Image added.', 'success');
++      await loadProduct(false);
++    } catch (err) {
++      setMsg(status, err.message, 'error');
++    }
++  }
++
++  // ── Edit mode: load ──────────────────────────────────────────────────
++  async function loadProduct(refillForm = true) {
++    const { product } = await api('GET', '/api/admin/products/' + productId);
++    if (refillForm) fillForm(product);
++    document.title = 'Edit ' + product.name + ' — Admin — Bliss Perfumes';
++    renderVariants(product.variants);
++    renderImages(product.images);
++  }
++
++  async function startEditMode() {
++    document.querySelector('h1').textContent = 'Edit Product';
++    $('initial-variant-fields').hidden = true;
++    $('initial-variant-fields').style.display = 'none';
++    $('initial-image-field').hidden = true;
++    $('initial-image-field').style.display = 'none';
++    $('variants-card').hidden = false;
++    $('images-card').hidden = false;
++    submitBtn.textContent = 'Save changes';
++    $('add-variant-btn').addEventListener('click', addVariant);
++    $('add-image-btn').addEventListener('click', addImage);
++    try {
++      await loadProduct();
+     } catch (err) {
+-      setStatus('Network error. Check connection and try again.', 'error');
++      setMsg(statusMsg, err.message + ' Go back to Products and try again.', 'error');
++      submitBtn.disabled = true;
++    }
++  }
++
++  // ── Submit ───────────────────────────────────────────────────────────
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    setMsg(statusMsg, '', '');
++    const label = submitBtn.textContent;
++    submitBtn.disabled = true;
++    submitBtn.textContent = 'Saving...';
++    try {
++      await (isEdit ? saveProduct() : createProduct());
++    } catch (err) {
++      setMsg(statusMsg, err.message, 'error');
++    } finally {
+       submitBtn.disabled = false;
+-      submitBtn.textContent = 'Save Product';
++      submitBtn.textContent = label;
+     }
+   });
++
++  if (isEdit) startEditMode();
+ })();
+diff --git a/public/admin/order-detail.html b/public/admin/order-detail.html
+index 7267dbd..d785cc5 100644
+--- a/public/admin/order-detail.html
++++ b/public/admin/order-detail.html
+@@ -10,7 +10,7 @@
+ 	<header class="admin-header">
+ 		<div class="brand-wrap"><a class="brand" href="index.html">Bliss Perfumes</a><span class="admin-badge">Admin</span></div>
+ 		<nav class="admin-nav">
+-			<a href="index.html">Dashboard</a><a href="products.html">Products</a><a href="orders.html" class="active">Orders</a><a href="pickup.html">Pickup</a>
++			<a href="index.html">Dashboard</a><a href="products.html">Products</a><a href="orders.html" class="active">Orders</a><a href="pickup.html">Pickup</a><a href="/index.html" target="_blank">View Shop ↗</a>
+ 			<div class="admin-user"><span id="admin-username">Admin</span><button type="button" class="btn-logout" id="logout-btn">Log out</button></div>
+ 		</nav>
+ 	</header>
+diff --git a/public/admin/pickup.html b/public/admin/pickup.html
+index cb866ce..0874fb3 100644
+--- a/public/admin/pickup.html
++++ b/public/admin/pickup.html
+@@ -10,7 +10,7 @@
+ 	<header class="admin-header">
+ 		<div class="brand-wrap"><a class="brand" href="index.html">Bliss Perfumes</a><span class="admin-badge">Admin</span></div>
+ 		<nav class="admin-nav">
+-			<a href="index.html">Dashboard</a><a href="products.html">Products</a><a href="orders.html">Orders</a><a href="pickup.html" class="active">Pickup</a>
++			<a href="index.html">Dashboard</a><a href="products.html">Products</a><a href="orders.html">Orders</a><a href="pickup.html" class="active">Pickup</a><a href="/index.html" target="_blank">View Shop ↗</a>
+ 			<div class="admin-user"><span id="admin-username">Admin</span><button type="button" class="btn-logout" id="logout-btn">Log out</button></div>
+ 		</nav>
+ 	</header>
+diff --git a/public/admin/product-form.html b/public/admin/product-form.html
+index 0156522..2f461ae 100644
+--- a/public/admin/product-form.html
++++ b/public/admin/product-form.html
+@@ -17,6 +17,7 @@
+       <a href="index.html">Dashboard</a>
+       <a href="products.html" class="active">Products</a>
+       <a href="orders.html">Orders</a>
++      <a href="pickup.html">Pickup</a>
+       <a href="/index.html" target="_blank">View Shop ↗</a>
+       <div class="admin-user">
+         <span id="admin-username">Admin</span>
+diff --git a/public/admin/products.html b/public/admin/products.html
+index 287b59a..fe24c79 100644
+--- a/public/admin/products.html
++++ b/public/admin/products.html
+@@ -3,104 +3,54 @@
+ <head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+-  <meta name="color-scheme" content="dark">
+-  <!-- Title is filled by JS once the product loads -->
+-  <title>Product — Bliss Perfumes</title>
+-  <link rel="stylesheet" href="css/shop.css">
++  <title>Products — Admin — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/admin.css">
+ </head>
+ <body>
+ 
+-  <header class="site-header">
+-    <a class="brand" href="index.html">Shop name</a>
+-    <nav>
+-      <span id="nav-account">
+-        <a href="login.html">Log in</a>
+-      </span>
+-      <a class="cart-link" href="cart.html" aria-label="Cart">
+-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+-             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+-             aria-hidden="true">
+-          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+-          <line x1="3" y1="6" x2="21" y2="6"/>
+-          <path d="M16 10a4 4 0 0 1-8 0"/>
+-        </svg>
+-        Cart
+-      </a>
++  <header class="admin-header">
++    <div class="brand-wrap">
++      <a class="brand" href="index.html">Bliss Perfumes</a>
++      <span class="admin-badge">Admin</span>
++    </div>
++    <nav class="admin-nav">
++      <a href="index.html">Dashboard</a>
++      <a href="products.html" class="active">Products</a>
++      <a href="orders.html">Orders</a>
++      <a href="pickup.html">Pickup</a>
++      <a href="/index.html" target="_blank">View Shop ↗</a>
++      <div class="admin-user">
++        <span id="admin-username">Admin</span>
++        <button type="button" class="btn-logout" id="logout-btn">Log out</button>
++      </div>
+     </nav>
+   </header>
+ 
+-  <main class="product-detail-main" id="main">
+-    <a class="back-link" href="index.html">← Back to shop</a>
+-
+-    <!-- Filled by product.js once the product loads.
+-         The page-status element is shown while loading or on error. -->
+-    <p class="page-status" id="page-status" role="status" aria-live="polite">Loading...</p>
+-
+-    <div class="product-layout" id="product-layout" hidden>
+-
+-      <!-- Left: images -->
+-      <div class="product-images" id="product-images">
+-        <!-- Primary image or placeholder -->
+-        <div id="main-image-wrap"></div>
+-        <!-- Thumbnail strip (hidden when there is only one image) -->
+-        <div class="product-thumbs" id="product-thumbs" hidden></div>
++  <main class="admin-container">
++    <div class="page-title-row">
++      <div>
++        <h1>Products</h1>
++        <p style="color: var(--muted); margin: 4px 0 0;">Everything in your shop, including drafts. Hidden products are not visible to customers.</p>
+       </div>
+-
+-      <!-- Right: info + actions -->
+-      <div class="product-info" id="product-info">
+-
+-        <div>
+-          <p class="product-brand" id="product-brand"></p>
+-          <h1 class="product-name" id="product-name"></h1>
+-          <span class="product-concentration" id="product-concentration" hidden></span>
+-        </div>
+-
+-        <p class="product-description" id="product-description" hidden></p>
+-
+-        <!-- Scent notes (hidden when all three are empty) -->
+-        <section class="scent-notes" id="scent-notes" hidden aria-label="Scent notes">
+-          <h3>Scent notes</h3>
+-          <div class="notes-row" id="notes-row"></div>
+-        </section>
+-
+-        <!-- Variant picker -->
+-        <div class="variant-picker" id="variant-picker">
+-          <h3>Select size</h3>
+-          <div class="variant-options" id="variant-options" role="radiogroup"
+-               aria-label="Size options">
+-            <!-- Variant buttons injected by JS -->
+-          </div>
+-        </div>
+-
+-        <!-- Quantity -->
+-        <div class="qty-row" id="qty-row" hidden>
+-          <label for="qty-display">Qty</label>
+-          <div class="qty-control">
+-            <button class="qty-btn" id="qty-dec" type="button"
+-                    aria-label="Decrease quantity">−</button>
+-            <span class="qty-display" id="qty-display" aria-live="polite"
+-                  aria-atomic="true">1</span>
+-            <button class="qty-btn" id="qty-inc" type="button"
+-                    aria-label="Increase quantity">+</button>
+-          </div>
+-        </div>
+-
+-        <!-- Add to cart -->
+-        <div class="add-to-cart-wrap" id="add-to-cart-wrap" hidden>
+-          <button class="add-to-cart" id="add-to-cart" type="button">
+-            Add to cart
+-          </button>
+-          <p class="out-of-stock-msg" id="out-of-stock-msg" aria-live="polite">
+-            Out of stock
+-          </p>
+-          <p class="cart-feedback" id="cart-feedback" aria-live="polite"></p>
+-        </div>
+-
+-      </div><!-- /product-info -->
+-    </div><!-- /product-layout -->
++      <a href="product-form.html" class="btn">+ Add Product</a>
++    </div>
++
++    <div class="table-wrap">
++      <table>
++        <thead>
++          <tr>
++            <th></th><th>Name</th><th>Brand</th><th>Type</th><th>Scent</th>
++            <th>Sizes</th><th>Bottles</th><th>From</th><th>Status</th><th>Actions</th>
++          </tr>
++        </thead>
++        <tbody id="products-table-body">
++          <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:40px;">Loading…</td></tr>
++        </tbody>
++      </table>
++    </div>
+   </main>
+ 
+-  <script src="js/common.js"></script>
+-  <script src="js/product.js"></script>
++  <script src="js/admin-common.js"></script>
++  <script src="js/admin-products.js"></script>
+ </body>
+-</html>
+\ No newline at end of file
++</html>
+diff --git a/public/cart.html b/public/cart.html
+index e69de29..f7440bb 100644
+--- a/public/cart.html
++++ b/public/cart.html
+@@ -0,0 +1,55 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Your cart — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/cart.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="index.html">Bliss Perfumes</a>
++    <nav>
++      <span id="nav-account"><a href="login.html">Log in</a></span>
++      <a class="cart-link" href="cart.html" aria-label="Cart">
++        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
++          <line x1="3" y1="6" x2="21" y2="6"/>
++          <path d="M16 10a4 4 0 0 1-8 0"/>
++        </svg>
++        Cart (<span id="header-cart-count">0</span>)
++      </a>
++    </nav>
++  </header>
++
++  <main class="cart-main">
++    <h1>Your cart</h1>
++
++    <div id="empty-cart-view" hidden>
++      <p class="cart-empty-text">Your cart is empty.</p>
++      <a class="cart-btn" href="index.html">Browse perfumes</a>
++    </div>
++
++    <div id="cart-view" class="cart-layout" hidden>
++      <div id="cart-items-container" class="cart-items"></div>
++
++      <aside class="cart-summary" aria-labelledby="cart-summary-heading">
++        <h2 id="cart-summary-heading">Summary</h2>
++        <dl class="cart-totals">
++          <div><dt>Subtotal</dt><dd id="cart-subtotal">GHS 0.00</dd></div>
++          <div><dt>Delivery</dt><dd>Chosen at checkout</dd></div>
++          <div class="cart-total-row"><dt>Total</dt><dd id="cart-total">GHS 0.00</dd></div>
++        </dl>
++        <a class="cart-btn cart-btn-block" href="checkout.html">Checkout</a>
++        <a class="cart-continue" href="index.html">Continue shopping</a>
++      </aside>
++    </div>
++  </main>
++
++  <script src="js/cart.js"></script>
++</body>
++</html>
+diff --git a/public/contact.html b/public/contact.html
+index e69de29..4e38611 100644
+--- a/public/contact.html
++++ b/public/contact.html
+@@ -0,0 +1,44 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Contact — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/base.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="index.html">Bliss Perfumes</a>
++    <nav>
++      <a href="index.html">Shop</a>
++      <a class="cart-link" href="cart.html">Cart</a>
++    </nav>
++  </header>
++
++  <main class="page-main">
++    <h1>Contact</h1>
++    <p class="page-lede">Questions about an order or a product? Reach the shop directly.</p>
++
++    <h2>Phone / WhatsApp</h2>
++    <p>[SHOP PHONE NUMBER — replace this line]</p>
++
++    <h2>Campus pickup point</h2>
++    <p>University of Cape Coast (UCC) campus. Have your order number and pickup code ready.</p>
++
++    <h2>Before you message</h2>
++    <p>Include your order number, which you can find under <a href="orders.html">Your orders</a>.</p>
++
++    <a class="page-btn" href="index.html">Back to shop</a>
++  </main>
++
++  <footer class="site-footer">
++    <a href="delivery-returns.html">Delivery &amp; returns</a>
++    <a href="contact.html">Contact</a>
++    <a href="privacy.html">Privacy</a>
++  </footer>
++
++</body>
++</html>
+diff --git a/public/css/base.css b/public/css/base.css
+index e69de29..35f9cd9 100644
+--- a/public/css/base.css
++++ b/public/css/base.css
+@@ -0,0 +1,91 @@
++/* Shared styles for the plain content pages (delivery, contact, privacy,
++   404) and the site footer. Load AFTER shop.css, which defines the
++   variables, body and site header. */
++
++.page-main {
++  max-width: 680px;
++  margin: 0 auto;
++  padding: 32px 20px 64px;
++}
++
++.page-main h1 {
++  margin: 0 0 8px;
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 1.7rem;
++  font-weight: 400;
++}
++
++.page-main h2 {
++  margin: 28px 0 8px;
++  font-size: 1.05rem;
++}
++
++.page-main p,
++.page-main li {
++  color: var(--muted);
++}
++
++.page-main ul {
++  padding-left: 20px;
++}
++
++.page-main a {
++  color: var(--text);
++}
++
++.page-lede {
++  margin: 0 0 8px;
++}
++
++.fee-table {
++  width: 100%;
++  border-collapse: collapse;
++  margin: 12px 0;
++}
++
++.fee-table th,
++.fee-table td {
++  padding: 10px 12px;
++  border-bottom: 1px solid var(--border);
++  text-align: left;
++  font-size: 0.92rem;
++}
++
++.fee-table th {
++  color: var(--text);
++  font-weight: 600;
++}
++
++.fee-table td {
++  color: var(--muted);
++}
++
++.page-btn {
++  display: inline-block;
++  margin-top: 20px;
++  padding: 11px 20px;
++  background: var(--text);
++  color: var(--bg) !important;
++  border-radius: var(--radius);
++  font-weight: 600;
++  text-decoration: none;
++}
++
++.site-footer {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 8px 20px;
++  justify-content: center;
++  padding: 24px 20px;
++  border-top: 1px solid var(--border);
++  font-size: 0.85rem;
++}
++
++.site-footer a {
++  color: var(--muted);
++  text-decoration: none;
++}
++
++.site-footer a:hover {
++  color: var(--text);
++}
+diff --git a/public/css/cart.css b/public/css/cart.css
+index e69de29..651dfd6 100644
+--- a/public/css/cart.css
++++ b/public/css/cart.css
+@@ -0,0 +1,217 @@
++/* Cart page. Loaded after shop.css, which supplies the variables, body and
++   site header. Dark, minimal, mobile-first. */
++
++.cart-main {
++  max-width: 960px;
++  margin: 0 auto;
++  padding: 28px 20px 60px;
++}
++
++.cart-main h1 {
++  margin: 0 0 24px;
++  font-family: Georgia, "Times New Roman", serif;
++  font-size: 1.7rem;
++  font-weight: 400;
++}
++
++.cart-empty-text {
++  color: var(--muted);
++  margin: 0 0 20px;
++}
++
++.cart-layout {
++  display: grid;
++  gap: 24px;
++  align-items: start;
++}
++
++@media (min-width: 800px) {
++  .cart-layout {
++    grid-template-columns: 1fr 300px;
++  }
++}
++
++/* ── Line items ───────────────────────────────────────────────────── */
++.cart-items {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++}
++
++.cart-item {
++  display: grid;
++  grid-template-columns: 72px 1fr;
++  gap: 14px;
++  padding: 14px;
++  background: var(--field);
++  border: 1px solid var(--card-border, #2a2a2a);
++  border-radius: var(--radius);
++}
++
++.item-thumb,
++.item-thumb-placeholder {
++  width: 72px;
++  height: 72px;
++  border-radius: 4px;
++  object-fit: cover;
++  background: #222;
++}
++
++.item-thumb-placeholder {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  font-size: 1.6rem;
++}
++
++.item-details {
++  min-width: 0;
++}
++
++.item-name {
++  display: block;
++  color: var(--text);
++  text-decoration: none;
++  font-weight: 600;
++  overflow-wrap: anywhere;
++}
++
++.item-name:hover {
++  text-decoration: underline;
++}
++
++.item-meta {
++  margin: 2px 0 6px;
++  color: var(--muted);
++  font-size: 0.85rem;
++}
++
++.item-price {
++  font-size: 0.9rem;
++  color: var(--muted);
++}
++
++.item-actions {
++  grid-column: 1 / -1;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++}
++
++.stepper {
++  display: inline-flex;
++  align-items: center;
++  border: 1px solid var(--border);
++  border-radius: var(--radius);
++}
++
++.stepper-btn {
++  width: 36px;
++  height: 36px;
++  background: none;
++  border: 0;
++  color: var(--text);
++  font: inherit;
++  font-size: 1.1rem;
++  cursor: pointer;
++}
++
++.stepper-btn:hover {
++  background: #222;
++}
++
++.stepper-qty {
++  min-width: 32px;
++  text-align: center;
++}
++
++.btn-remove {
++  background: none;
++  border: 0;
++  padding: 6px;
++  color: var(--muted);
++  cursor: pointer;
++}
++
++.btn-remove:hover {
++  color: var(--error);
++}
++
++/* ── Summary ──────────────────────────────────────────────────────── */
++.cart-summary {
++  padding: 18px;
++  background: var(--field);
++  border: 1px solid var(--card-border, #2a2a2a);
++  border-radius: var(--radius);
++}
++
++.cart-summary h2 {
++  margin: 0 0 14px;
++  font-size: 1rem;
++  font-weight: 600;
++}
++
++.cart-totals {
++  margin: 0 0 18px;
++}
++
++.cart-totals div {
++  display: flex;
++  justify-content: space-between;
++  gap: 12px;
++  padding: 6px 0;
++  font-size: 0.92rem;
++}
++
++.cart-totals dt {
++  color: var(--muted);
++}
++
++.cart-totals dd {
++  margin: 0;
++}
++
++.cart-total-row {
++  margin-top: 6px;
++  padding-top: 12px !important;
++  border-top: 1px solid var(--border);
++  font-weight: 600;
++}
++
++.cart-total-row dt {
++  color: var(--text);
++}
++
++.cart-btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  padding: 12px 20px;
++  background: var(--text);
++  color: var(--bg);
++  border-radius: var(--radius);
++  font-weight: 600;
++  text-decoration: none;
++}
++
++.cart-btn:hover {
++  opacity: 0.88;
++}
++
++.cart-btn-block {
++  display: flex;
++  width: 100%;
++}
++
++.cart-continue {
++  display: block;
++  margin-top: 14px;
++  text-align: center;
++  color: var(--muted);
++  font-size: 0.88rem;
++}
++
++.cart-continue:hover {
++  color: var(--text);
++}
+diff --git a/public/css/product.css b/public/css/product.css
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/public/delivery-returns.html b/public/delivery-returns.html
+index e69de29..3a45894 100644
+--- a/public/delivery-returns.html
++++ b/public/delivery-returns.html
+@@ -0,0 +1,54 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Delivery & returns — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/base.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="index.html">Bliss Perfumes</a>
++    <nav>
++      <a href="index.html">Shop</a>
++      <a class="cart-link" href="cart.html">Cart</a>
++    </nav>
++  </header>
++
++  <main class="page-main">
++    <h1>Delivery &amp; returns</h1>
++    <p class="page-lede">Orders are prepared and handed over by the shop owner. There is no courier company involved.</p>
++
++    <h2>How you can get your order</h2>
++    <table class="fee-table">
++      <thead><tr><th>Option</th><th>Fee</th><th>How it works</th></tr></thead>
++      <tbody>
++        <tr><td>UCC campus pickup</td><td>Free</td><td>Collect in person at the shop's pickup point on UCC campus.</td></tr>
++        <tr><td>Junction collection</td><td>GHS 5.00</td><td>Your order is sent by a public transport driver to the junction you name. You collect it there.</td></tr>
++        <tr><td>House delivery</td><td>GHS 10.00</td><td>Same as junction collection, but carried on from the junction to your address.</td></tr>
++      </tbody>
++    </table>
++
++    <h2>Pickup code</h2>
++    <p>After you place an order you get a six-digit pickup code. Show it when you collect. It works once.</p>
++
++    <h2>Payment</h2>
++    <p>Payment arrangements are confirmed with you after your order is placed.</p>
++
++    <h2>Returns</h2>
++    <p>Check your perfume when you collect it. If it is damaged or not what you ordered, contact us the same day and we will sort it out. Perfume that has been opened or used cannot be returned.</p>
++
++    <a class="page-btn" href="index.html">Back to shop</a>
++  </main>
++
++  <footer class="site-footer">
++    <a href="delivery-returns.html">Delivery &amp; returns</a>
++    <a href="contact.html">Contact</a>
++    <a href="privacy.html">Privacy</a>
++  </footer>
++
++</body>
++</html>
+diff --git a/public/forgot-password.html b/public/forgot-password.html
+index e69de29..1e2d4ea 100644
+--- a/public/forgot-password.html
++++ b/public/forgot-password.html
+@@ -0,0 +1,37 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Forgot password — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/base.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="index.html">Bliss Perfumes</a>
++    <nav>
++      <a href="index.html">Shop</a>
++      <a class="cart-link" href="cart.html">Cart</a>
++    </nav>
++  </header>
++
++  <main class="page-main">
++    <h1>Forgot your password?</h1>
++    <p class="page-lede">Online password reset is not available yet.</p>
++    <p>Contact the shop with your username and the phone number on your account, and we will help you get back in.</p>
++
++    <a class="page-btn" href="contact.html">Contact the shop</a>
++    <p><a href="login.html">Back to log in</a></p>
++  </main>
++
++  <footer class="site-footer">
++    <a href="delivery-returns.html">Delivery &amp; returns</a>
++    <a href="contact.html">Contact</a>
++    <a href="privacy.html">Privacy</a>
++  </footer>
++
++</body>
++</html>
+diff --git a/public/index.html b/public/index.html
+index 9b90f49..b030c45 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -6,12 +6,12 @@
+   <meta name="color-scheme" content="dark">
+   <title>Bliss Perfumes</title>
+   <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/base.css">
+ </head>
+ <body>
+ 
+   <header class="site-header">
+-    <!-- TODO: replace "Shop name" with the real brand name -->
+-    <a class="brand" href="index.html">Bliss Perfume</a>
++    <a class="brand" href="index.html">Bliss Perfumes</a>
+     <nav>
+       <span id="nav-account">
+         <!-- Filled by JS: shows "Log in" when logged out, username when logged in -->
+@@ -56,6 +56,12 @@
+     </div>
+   </main>
+ 
++  <footer class="site-footer">
++    <a href="delivery-returns.html">Delivery &amp; returns</a>
++    <a href="contact.html">Contact</a>
++    <a href="privacy.html">Privacy</a>
++  </footer>
++
+   <script src="js/shop.js"></script>
+ </body>
+ </html>
+diff --git a/public/js/api.js b/public/js/api.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/public/privacy.html b/public/privacy.html
+index e69de29..ef93c2d 100644
+--- a/public/privacy.html
++++ b/public/privacy.html
+@@ -0,0 +1,50 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="color-scheme" content="dark">
++  <title>Privacy — Bliss Perfumes</title>
++  <link rel="stylesheet" href="css/shop.css">
++  <link rel="stylesheet" href="css/base.css">
++</head>
++<body>
++
++  <header class="site-header">
++    <a class="brand" href="index.html">Bliss Perfumes</a>
++    <nav>
++      <a href="index.html">Shop</a>
++      <a class="cart-link" href="cart.html">Cart</a>
++    </nav>
++  </header>
++
++  <main class="page-main">
++    <h1>Privacy</h1>
++    <p class="page-lede">What this shop stores about you and why.</p>
++
++    <h2>What we collect</h2>
++    <ul>
++      <li>Username, email address and phone number, to create your account and verify your phone.</li>
++      <li>Your order history, and the junction or delivery address you give us, so we can hand over your order.</li>
++    </ul>
++
++    <h2>How it is used</h2>
++    <p>Only to run your orders and contact you about them. We do not sell your details or share them for advertising.</p>
++
++    <h2>Passwords and sign-in</h2>
++    <p>Passwords are stored hashed, never as plain text. Signing in uses a secure session cookie. Your cart is kept in your own browser until you check out.</p>
++
++    <h2>Your details</h2>
++    <p>To correct or delete your account, <a href="contact.html">contact the shop</a>.</p>
++
++    <a class="page-btn" href="index.html">Back to shop</a>
++  </main>
++
++  <footer class="site-footer">
++    <a href="delivery-returns.html">Delivery &amp; returns</a>
++    <a href="contact.html">Contact</a>
++    <a href="privacy.html">Privacy</a>
++  </footer>
++
++</body>
++</html>
+diff --git a/public/reset-password.html b/public/reset-password.html
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/public/shop.html b/public/shop.html
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/app.js b/src/app.js
+index 5fbc9fe..86849cc 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -19,7 +19,18 @@ checkEnv();
+ 
+ const app = express();
+ 
+-app.use(helmet());
++// Default helmet CSP only allows images from this server. Product images are
++// hosted on Cloudinary, so that host is allowed for <img> as well.
++app.use(
++  helmet({
++    contentSecurityPolicy: {
++      directives: {
++        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
++        'img-src': ["'self'", 'data:', 'https://res.cloudinary.com'],
++      },
++    },
++  })
++);
+ app.use(compression());
+ 
+ // Later: mount the Paystack webhook route HERE, before express.json().
+@@ -48,6 +59,14 @@ app.use('/api/admin/pickups', pickupRoutes);
+ // Serves everything in public/, e.g. http://localhost:3000/signup.html
+ app.use(express.static(path.join(__dirname, '..', 'public')));
+ 
++// Anything that reaches here matched no route or static file.
++app.use('/api', (req, res) => {
++  res.status(404).json({ message: 'Not found.' });
++});
++app.use((req, res) => {
++  res.status(404).sendFile(path.join(__dirname, '..', 'public', '404.html'));
++});
++
+ // Must be registered after every route above.
+ app.use(errorHandler);
+ 
+diff --git a/src/controllers/admin.controller.js b/src/controllers/admin.controller.js
+index 2de4508..114223f 100644
+--- a/src/controllers/admin.controller.js
++++ b/src/controllers/admin.controller.js
+@@ -1,7 +1,14 @@
+ const productRepo = require('../repositories/product.repository');
+ const orderService = require('../services/order.service');
++const AppError = require('../utils/app-error');
+ const { parseOrderId } = require('./order.controller');
+ 
++function parseId(value, label) {
++  const id = parseInt(value, 10);
++  if (!Number.isFinite(id) || id < 1) throw new AppError(400, `Invalid ${label} id.`);
++  return id;
++}
++
+ /**
+  * GET /api/admin/products
+  * List all products for the admin table, including unpublished products.
+@@ -107,7 +114,111 @@ async function updateOrderStatus(req, res, next) {
+   }
+ }
+ 
++// ---------------------------------------------------------------------------
++// Product editing
++// ---------------------------------------------------------------------------
++
++/** GET /api/admin/products/:id — one product, published or not, for the edit form. */
++async function getProduct(req, res, next) {
++  try {
++    const product = await productRepo.findByIdAdmin(parseId(req.params.id, 'product'));
++    if (!product) throw new AppError(404, 'Product not found.');
++    res.json({ product });
++  } catch (err) {
++    next(err);
++  }
++}
++
++/** PATCH /api/admin/products/:id — change product fields, including is_published. */
++async function updateProduct(req, res, next) {
++  try {
++    const id = parseId(req.params.id, 'product');
++    const found = await productRepo.update(id, req.body);
++    if (!found) throw new AppError(404, 'Product not found.');
++    res.json({ message: 'Product updated.' });
++  } catch (err) {
++    next(err);
++  }
++}
++
++/** POST /api/admin/products/:id/variants — add another bottle size. */
++async function addVariant(req, res, next) {
++  try {
++    const productId = parseId(req.params.id, 'product');
++    if (!(await productRepo.productExists(productId))) throw new AppError(404, 'Product not found.');
++    const { size_ml, price_pesewas, stock, sku } = req.body;
++    const variantId = await productRepo.addVariant({
++      product_id: productId,
++      size_ml,
++      price_pesewas,
++      stock,
++      sku: sku || null,
++    });
++    res.status(201).json({ message: 'Size added.', variantId });
++  } catch (err) {
++    if (err.code === 'ER_DUP_ENTRY') return next(new AppError(409, 'That SKU is already used by another size.'));
++    next(err);
++  }
++}
++
++/** PATCH /api/admin/variants/:variantId — change price, stock, size or SKU. */
++async function updateVariant(req, res, next) {
++  try {
++    const found = await productRepo.updateVariant(parseId(req.params.variantId, 'size'), req.body);
++    if (!found) throw new AppError(404, 'Size not found.');
++    res.json({ message: 'Size updated.' });
++  } catch (err) {
++    if (err.code === 'ER_DUP_ENTRY') return next(new AppError(409, 'That SKU is already used by another size.'));
++    next(err);
++  }
++}
++
++/** DELETE /api/admin/variants/:variantId — only works if no order used that size. */
++async function deleteVariant(req, res, next) {
++  try {
++    const found = await productRepo.deleteVariant(parseId(req.params.variantId, 'size'));
++    if (!found) throw new AppError(404, 'Size not found.');
++    res.json({ message: 'Size removed.' });
++  } catch (err) {
++    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
++      return next(new AppError(409, 'Orders already use this size. Set its stock to 0 instead of deleting it.'));
++    }
++    next(err);
++  }
++}
++
++/** POST /api/admin/products/:id/images — attach an image link. */
++async function addImage(req, res, next) {
++  try {
++    const productId = parseId(req.params.id, 'product');
++    if (!(await productRepo.productExists(productId))) throw new AppError(404, 'Product not found.');
++    const position = await productRepo.nextImagePosition(productId);
++    const imageId = await productRepo.addImage({ product_id: productId, url: req.body.url, position });
++    res.status(201).json({ message: 'Image added.', imageId });
++  } catch (err) {
++    next(err);
++  }
++}
++
++/** DELETE /api/admin/images/:imageId */
++async function deleteImage(req, res, next) {
++  try {
++    const found = await productRepo.deleteImage(parseId(req.params.imageId, 'image'));
++    if (!found) throw new AppError(404, 'Image not found.');
++    res.json({ message: 'Image removed.' });
++  } catch (err) {
++    next(err);
++  }
++}
++
+ module.exports = {
++  getProduct,
++  updateProduct,
++  addVariant,
++  updateVariant,
++  deleteVariant,
++  addImage,
++  deleteImage,
+   listProducts,
+   createProduct,
+   listOrders,
+diff --git a/src/controllers/cart.controller.js b/src/controllers/cart.controller.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/controllers/delivery.controller.js b/src/controllers/delivery.controller.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/controllers/user.controller.js b/src/controllers/user.controller.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/repositories/pickup.repository.js b/src/repositories/pickup.repository.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/repositories/product.repository.js b/src/repositories/product.repository.js
+index 98da666..7250d9c 100644
+--- a/src/repositories/product.repository.js
++++ b/src/repositories/product.repository.js
+@@ -226,6 +226,96 @@ async function addImage({ product_id, url, position = 0 }) {
+   return result.insertId;
+ }
+ 
++/**
++ * Fetch one product for the admin edit form: published or not, with every
++ * variant and image.
++ */
++async function findByIdAdmin(id) {
++  const [rows] = await db.query(
++    `SELECT id, name, brand, description, scent_family, top_notes, middle_notes,
++            base_notes, concentration, is_published
++     FROM products WHERE id = ? LIMIT 1`,
++    [id]
++  );
++  if (!rows.length) return null;
++
++  const [variants] = await db.query(
++    'SELECT id, size_ml, price_pesewas, stock, sku FROM product_variants WHERE product_id = ? ORDER BY size_ml ASC',
++    [id]
++  );
++  const [images] = await db.query(
++    'SELECT id, url, position FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC',
++    [id]
++  );
++  return { ...rows[0], variants, images };
++}
++
++const PRODUCT_COLUMNS = [
++  'name', 'brand', 'description', 'scent_family',
++  'top_notes', 'middle_notes', 'base_notes', 'concentration', 'is_published',
++];
++
++/**
++ * Update only the product fields that were sent. Column names come from the
++ * fixed list above, never from the request, so this stays injection-safe.
++ * Returns false if no product has that id.
++ */
++async function update(id, fields) {
++  const sets = [];
++  const params = [];
++  for (const col of PRODUCT_COLUMNS) {
++    if (fields[col] === undefined) continue;
++    let value = fields[col];
++    if (col === 'is_published') value = value ? 1 : 0;
++    else if (value === '') value = col === 'name' ? value : null;
++    sets.push(`${col} = ?`);
++    params.push(value);
++  }
++  if (!sets.length) return true;
++  params.push(id);
++  const [result] = await db.query(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, params);
++  return result.affectedRows > 0;
++}
++
++const VARIANT_COLUMNS = ['size_ml', 'price_pesewas', 'stock', 'sku'];
++
++async function updateVariant(variantId, fields) {
++  const sets = [];
++  const params = [];
++  for (const col of VARIANT_COLUMNS) {
++    if (fields[col] === undefined) continue;
++    sets.push(`${col} = ?`);
++    params.push(col === 'sku' && fields[col] === '' ? null : fields[col]);
++  }
++  if (!sets.length) return true;
++  params.push(variantId);
++  const [result] = await db.query(`UPDATE product_variants SET ${sets.join(', ')} WHERE id = ?`, params);
++  return result.affectedRows > 0;
++}
++
++async function deleteVariant(variantId) {
++  const [result] = await db.query('DELETE FROM product_variants WHERE id = ?', [variantId]);
++  return result.affectedRows > 0;
++}
++
++async function productExists(id) {
++  const [rows] = await db.query('SELECT id FROM products WHERE id = ? LIMIT 1', [id]);
++  return rows.length > 0;
++}
++
++async function nextImagePosition(productId) {
++  const [rows] = await db.query(
++    'SELECT COALESCE(MAX(position) + 1, 0) AS next FROM product_images WHERE product_id = ?',
++    [productId]
++  );
++  return rows[0].next;
++}
++
++async function deleteImage(imageId) {
++  const [result] = await db.query('DELETE FROM product_images WHERE id = ?', [imageId]);
++  return result.affectedRows > 0;
++}
++
+ module.exports = {
+   findPublished,
+   findById,
+@@ -235,4 +325,11 @@ module.exports = {
+   create,
+   addVariant,
+   addImage,
++  findByIdAdmin,
++  update,
++  updateVariant,
++  deleteVariant,
++  productExists,
++  nextImagePosition,
++  deleteImage,
+ };
+diff --git a/src/routes/admin.routes.js b/src/routes/admin.routes.js
+index 47c817f..053ae86 100644
+--- a/src/routes/admin.routes.js
++++ b/src/routes/admin.routes.js
+@@ -3,7 +3,13 @@ const controller = require('../controllers/admin.controller');
+ const { requireAuth } = require('../middleware/auth.middleware');
+ const { requireAdmin } = require('../middleware/admin.middleware');
+ const validate = require('../middleware/validate.middleware');
+-const { createProductSchema } = require('../validators/product.validator');
++const {
++  createProductSchema,
++  updateProductSchema,
++  addVariantSchema,
++  updateVariantSchema,
++  addImageSchema,
++} = require('../validators/product.validator');
+ const { updateOrderStatusSchema } = require('../validators/order.validator');
+ 
+ const router = express.Router();
+@@ -16,6 +22,16 @@ router.get('/products', controller.listProducts);
+ 
+ // POST /api/admin/products — create a new product with variant and image
+ router.post('/products', validate(createProductSchema), controller.createProduct);
++
++// One product for the edit form, then its fields, sizes and images
++router.get('/products/:id', controller.getProduct);
++router.patch('/products/:id', validate(updateProductSchema), controller.updateProduct);
++router.post('/products/:id/variants', validate(addVariantSchema), controller.addVariant);
++router.post('/products/:id/images', validate(addImageSchema), controller.addImage);
++router.patch('/variants/:variantId', validate(updateVariantSchema), controller.updateVariant);
++router.delete('/variants/:variantId', controller.deleteVariant);
++router.delete('/images/:imageId', controller.deleteImage);
++
+ router.get('/orders', controller.listOrders);
+ router.get('/orders/:id', controller.getOrder);
+ router.patch('/orders/:id/status', validate(updateOrderStatusSchema), controller.updateOrderStatus);
+diff --git a/src/routes/cart.routes.js b/src/routes/cart.routes.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/routes/delivery.routes.js b/src/routes/delivery.routes.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/routes/user.routes.js b/src/routes/user.routes.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/services/delivery.service.js b/src/services/delivery.service.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/services/stock.service.js b/src/services/stock.service.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/validators/delivery.validator.js b/src/validators/delivery.validator.js
+deleted file mode 100644
+index e69de29..0000000
+diff --git a/src/validators/product.validator.js b/src/validators/product.validator.js
+index 24e63a8..511ecf0 100644
+--- a/src/validators/product.validator.js
++++ b/src/validators/product.validator.js
+@@ -29,3 +29,53 @@ const createProductSchema = z.object({
+ });
+ 
+ module.exports = { listProductsQuerySchema, createProductSchema, CONCENTRATIONS };
++
++// ---------------------------------------------------------------------------
++// Admin edit schemas. Every field is optional on a PATCH; only the fields
++// that are sent get changed.
++// ---------------------------------------------------------------------------
++const optionalText = (max) => z.string().trim().max(max).optional().or(z.literal(''));
++
++const updateProductSchema = z
++  .object({
++    name: z.string().trim().min(1, 'Product name is required.').max(150).optional(),
++    brand: optionalText(100),
++    description: z.string().trim().optional().or(z.literal('')),
++    scent_family: optionalText(50),
++    top_notes: optionalText(190),
++    middle_notes: optionalText(190),
++    base_notes: optionalText(190),
++    concentration: z.enum(CONCENTRATIONS).optional().or(z.literal('')),
++    is_published: z.boolean().optional(),
++  })
++  .refine((body) => Object.keys(body).length > 0, { message: 'Nothing to update.' });
++
++const addVariantSchema = z.object({
++  size_ml: z.coerce.number().int().positive('Size (ml) must be greater than 0.'),
++  price_pesewas: z.coerce.number().int().positive('Price must be greater than 0.'),
++  stock: z.coerce.number().int().min(0, 'Stock cannot be negative.').default(0),
++  sku: z.string().trim().max(40).optional().or(z.literal('')),
++});
++
++const updateVariantSchema = z
++  .object({
++    size_ml: z.coerce.number().int().positive('Size (ml) must be greater than 0.').optional(),
++    price_pesewas: z.coerce.number().int().positive('Price must be greater than 0.').optional(),
++    stock: z.coerce.number().int().min(0, 'Stock cannot be negative.').optional(),
++    sku: z.string().trim().max(40).optional().or(z.literal('')),
++  })
++  .refine((body) => Object.keys(body).length > 0, { message: 'Nothing to update.' });
++
++const addImageSchema = z.object({
++  url: z
++    .string()
++    .trim()
++    .min(1, 'Image URL is required.')
++    .max(300)
++    .refine((u) => /^https:\/\//i.test(u) || u.startsWith('/images/'), 'Use a full https:// image link.'),
++});
++
++module.exports.updateProductSchema = updateProductSchema;
++module.exports.addVariantSchema = addVariantSchema;
++module.exports.updateVariantSchema = updateVariantSchema;
++module.exports.addImageSchema = addImageSchema;
+diff --git a/tests/auth.test.js b/tests/auth.test.js
+index e69de29..af2a67a 100644
+--- a/tests/auth.test.js
++++ b/tests/auth.test.js
+@@ -0,0 +1,43 @@
++const { normalisePhone } = require('../src/utils/phone');
++const { registerSchema, loginSchema } = require('../src/validators/auth.validator');
++
++describe('normalisePhone', () => {
++	test.each([
++		['0241234567', '+233241234567'],
++		['024 123 4567', '+233241234567'],
++		['+233241234567', '+233241234567'],
++		['233241234567', '+233241234567'],
++	])('%s -> %s', (input, expected) => {
++		expect(normalisePhone(input)).toBe(expected);
++	});
++
++	test.each(['12345', '0141234567', '', 'abc', null, undefined])('rejects %p', (input) => {
++		expect(normalisePhone(input)).toBeNull();
++	});
++});
++
++describe('registerSchema', () => {
++	const valid = { username: 'ama_k', email: 'Ama@Example.com', phone: '0241234567', password: 'longenough1' };
++
++	test('accepts a valid sign-up and lowercases the email', () => {
++		const result = registerSchema.safeParse(valid);
++		expect(result.success).toBe(true);
++		expect(result.data.email).toBe('ama@example.com');
++	});
++
++	test('rejects a short password', () => {
++		expect(registerSchema.safeParse({ ...valid, password: 'short' }).success).toBe(false);
++	});
++
++	test('rejects a username with spaces', () => {
++		expect(registerSchema.safeParse({ ...valid, username: 'ama k' }).success).toBe(false);
++	});
++});
++
++describe('loginSchema', () => {
++	test('defaults remember to false', () => {
++		const result = loginSchema.safeParse({ identifier: 'ama_k', password: 'x' });
++		expect(result.success).toBe(true);
++		expect(result.data.remember).toBe(false);
++	});
++});
+diff --git a/tests/paystack-webhook.test.js b/tests/paystack-webhook.test.js
+index e69de29..e9239bd 100644
+--- a/tests/paystack-webhook.test.js
++++ b/tests/paystack-webhook.test.js
+@@ -0,0 +1,3 @@
++// Write these when the Paystack integration is built.
++test.todo('rejects a webhook with a bad signature');
++test.todo('marks the order paid on charge.success');
+diff --git a/tests/product-admin.test.js b/tests/product-admin.test.js
+new file mode 100644
+index 0000000..2940cc1
+--- /dev/null
++++ b/tests/product-admin.test.js
+@@ -0,0 +1,42 @@
++const {
++	updateProductSchema,
++	updateVariantSchema,
++	addVariantSchema,
++	addImageSchema,
++} = require('../src/validators/product.validator');
++
++describe('admin product edit validation', () => {
++	test('PATCH product needs at least one field', () => {
++		expect(updateProductSchema.safeParse({}).success).toBe(false);
++		expect(updateProductSchema.safeParse({ is_published: false }).success).toBe(true);
++	});
++
++	test('PATCH product rejects an unknown concentration', () => {
++		expect(updateProductSchema.safeParse({ concentration: 'Cologne' }).success).toBe(false);
++	});
++
++	test('variant price must be a positive whole number of pesewas', () => {
++		expect(updateVariantSchema.safeParse({ price_pesewas: 35000 }).success).toBe(true);
++		expect(updateVariantSchema.safeParse({ price_pesewas: 0 }).success).toBe(false);
++		expect(updateVariantSchema.safeParse({ price_pesewas: 350.5 }).success).toBe(false);
++	});
++
++	test('variant stock cannot be negative', () => {
++		expect(updateVariantSchema.safeParse({ stock: -1 }).success).toBe(false);
++		expect(updateVariantSchema.safeParse({ stock: 0 }).success).toBe(true);
++	});
++
++	test('new size needs size and price, stock defaults to 0', () => {
++		const result = addVariantSchema.safeParse({ size_ml: 50, price_pesewas: 20000 });
++		expect(result.success).toBe(true);
++		expect(result.data.stock).toBe(0);
++		expect(addVariantSchema.safeParse({ size_ml: 50 }).success).toBe(false);
++	});
++
++	test('image link must be https or a local /images path', () => {
++		expect(addImageSchema.safeParse({ url: 'https://res.cloudinary.com/x/a.webp' }).success).toBe(true);
++		expect(addImageSchema.safeParse({ url: '/images/a.webp' }).success).toBe(true);
++		expect(addImageSchema.safeParse({ url: 'javascript:alert(1)' }).success).toBe(false);
++		expect(addImageSchema.safeParse({ url: 'http://insecure.example/a.png' }).success).toBe(false);
++	});
++});
+diff --git a/tests/stock.test.js b/tests/stock.test.js
+index e69de29..d1621b4 100644
+--- a/tests/stock.test.js
++++ b/tests/stock.test.js
+@@ -0,0 +1,3 @@
++// Stock is checked and decremented inside the order transaction, so the real
++// coverage for it is the end-to-end test in the README. Add DB-backed tests here later.
++test.todo('two simultaneous orders for the last bottle: only one succeeds');

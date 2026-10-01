@@ -29,3 +29,53 @@ const createProductSchema = z.object({
 });
 
 module.exports = { listProductsQuerySchema, createProductSchema, CONCENTRATIONS };
+
+// ---------------------------------------------------------------------------
+// Admin edit schemas. Every field is optional on a PATCH; only the fields
+// that are sent get changed.
+// ---------------------------------------------------------------------------
+const optionalText = (max) => z.string().trim().max(max).optional().or(z.literal(''));
+
+const updateProductSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Product name is required.').max(150).optional(),
+    brand: optionalText(100),
+    description: z.string().trim().optional().or(z.literal('')),
+    scent_family: optionalText(50),
+    top_notes: optionalText(190),
+    middle_notes: optionalText(190),
+    base_notes: optionalText(190),
+    concentration: z.enum(CONCENTRATIONS).optional().or(z.literal('')),
+    is_published: z.boolean().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, { message: 'Nothing to update.' });
+
+const addVariantSchema = z.object({
+  size_ml: z.coerce.number().int().positive('Size (ml) must be greater than 0.'),
+  price_pesewas: z.coerce.number().int().positive('Price must be greater than 0.'),
+  stock: z.coerce.number().int().min(0, 'Stock cannot be negative.').default(0),
+  sku: z.string().trim().max(40).optional().or(z.literal('')),
+});
+
+const updateVariantSchema = z
+  .object({
+    size_ml: z.coerce.number().int().positive('Size (ml) must be greater than 0.').optional(),
+    price_pesewas: z.coerce.number().int().positive('Price must be greater than 0.').optional(),
+    stock: z.coerce.number().int().min(0, 'Stock cannot be negative.').optional(),
+    sku: z.string().trim().max(40).optional().or(z.literal('')),
+  })
+  .refine((body) => Object.keys(body).length > 0, { message: 'Nothing to update.' });
+
+const addImageSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'Image URL is required.')
+    .max(300)
+    .refine((u) => /^https:\/\//i.test(u) || u.startsWith('/images/'), 'Use a full https:// image link.'),
+});
+
+module.exports.updateProductSchema = updateProductSchema;
+module.exports.addVariantSchema = addVariantSchema;
+module.exports.updateVariantSchema = updateVariantSchema;
+module.exports.addImageSchema = addImageSchema;
