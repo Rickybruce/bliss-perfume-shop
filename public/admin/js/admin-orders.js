@@ -30,7 +30,7 @@
 
 		body.innerHTML = visibleOrders.map((order) => `
 			<tr>
-				<td>#${escapeHtml(order.id)}</td>
+				<td><a href="order-detail.html?id=${encodeURIComponent(order.id)}">#${escapeHtml(order.id)}</a></td>
 				<td>${escapeHtml(order.username)}<br><span style="color: var(--muted);">${escapeHtml(order.customer_phone)}</span></td>
 				<td>${escapeHtml(order.fulfillment_type.replaceAll('_', ' '))}</td>
 				<td>${escapeHtml(formatDate(order.created_at))}</td>

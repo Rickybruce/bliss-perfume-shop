@@ -7,6 +7,9 @@ body {
 	min-height: 100vh;
 	min-height: 100dvh;
 	padding: 0;
+	/* auth.css centres the body for the login card; undo it here or the
+	   header shrinks to its content and floats in the middle. */
+	place-items: normal;
 }
 
 .checkout-header {

@@ -1,14 +1,14 @@
 {
-  "/images/Angham by Lattafa.webp": "",
-  "/images/Brown Orchid (Gold Edition) by Fragrance World.png": "",
-  "/images/Dolores Pour Femme.jpg": "",
-  "/images/Hayaati Belle.jpg": "",
-  "/images/Hayaati by Lattafa.jpg": "",
+  "/images/Angham by Lattafa.webp": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Angham_by_Lattafa.webp",
+  "/images/Brown Orchid (Gold Edition) by Fragrance World.png": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Brown_Orchid_Gold_Edition_by_Fragrance_World.png",
+  "/images/Dolores Pour Femme.jpg": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Dolores_Pour_Femme.jpg",
+  "/images/Hayaati Belle.jpg": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Hayaati_Belle.jpg",
+  "/images/Hayaati by Lattafa.jpg": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Hayaati_by_Lattafa.jpg",
   "/images/Her Confession by Lattafa.jpg": "",
-  "/images/Her Confession by Lattafa 2.webp": "",
+  "/images/Her Confession by Lattafa 2.webp": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Her_Confession_by_Lattafa_2.webp",
   "/images/Her Confession by Lattafa 3.webp": "",
   "/images/Jungle Vibe by Rayhaan.jfif": "",
-  "/images/Lattafa Yara Elxir.webp": "",
-  "/images/Rose Seduction Secret Obsession.png": "",
-  "/images/Vanille Bouquet.webp": ""
+  "/images/Lattafa Yara Elxir.webp": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Lattafa_Yara_Elxir.webp",
+  "/images/Rose Seduction Secret Obsession.png": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Rose_Seduction_Secret_Obsession.png",
+  "/images/Vanille Bouquet.webp": "https://res.cloudinary.com/hdrxmg1g/image/upload/f_auto/q_auto/Vanille_Bouquet.webp"
 }

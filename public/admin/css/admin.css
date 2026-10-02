@@ -348,3 +348,114 @@ textarea {
 .status-msg.is-success {
   color: var(--success);
 }
+
+/* ── Phones and small tablets ───────────────────────────────────────── */
+@media (max-width: 720px) {
+  .admin-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .admin-header .brand-wrap {
+    gap: 8px;
+  }
+
+  /* Nav becomes its own row that scrolls sideways instead of overflowing the page */
+  .admin-nav {
+    width: 100%;
+    gap: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .admin-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-nav a {
+    flex-shrink: 0;
+    padding: 6px 0;
+  }
+
+  .admin-user {
+    flex-shrink: 0;
+    margin-left: 4px;
+    padding-left: 14px;
+  }
+
+  .admin-container {
+    padding: 20px 14px 40px;
+  }
+
+  .page-title-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  th, td {
+    padding: 10px 8px;
+    white-space: nowrap;
+  }
+
+  .form-card {
+    padding: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .btn,
+  .btn-logout {
+    min-height: 40px;
+  }
+
+  input, select, textarea {
+    font-size: 16px; /* stops iOS zooming into the field on focus */
+  }
+}
+
+/* Phones: drop the less useful columns so Edit/Status stay on screen */
+@media (max-width: 720px) {
+  .products-table th:nth-child(1), .products-table td:nth-child(1),
+  .products-table th:nth-child(3), .products-table td:nth-child(3),
+  .products-table th:nth-child(4), .products-table td:nth-child(4),
+  .products-table th:nth-child(5), .products-table td:nth-child(5),
+  .products-table th:nth-child(6), .products-table td:nth-child(6),
+  .products-table th:nth-child(7), .products-table td:nth-child(7),
+  .products-table th:nth-child(8), .products-table td:nth-child(8),
+  .orders-table th:nth-child(5), .orders-table td:nth-child(5),
+  .orders-table th:nth-child(7), .orders-table td:nth-child(7),
+  .orders-table th:nth-child(3), .orders-table td:nth-child(3),
+  .orders-table th:nth-child(4), .orders-table td:nth-child(4) {
+    display: none;
+  }
+
+  .products-table td:nth-child(2),
+  .orders-table td:nth-child(2) {
+    white-space: normal;
+  }
+}
